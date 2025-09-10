@@ -1,0 +1,15 @@
+.app {
+  display: flex;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-right: 16px;
+}
+
+#container {
+  border: 1px solid #470404;
+  background: #f9f9f9;
+}
