@@ -1,0 +1,87 @@
+<div class="home-container">
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <h1>Crea Líneas de Tiempo Impresionantes</h1>
+      <p>Diseña visualizaciones temporales interactivas para proyectos, historias y planificaciones</p>
+      <div class="hero-actions">
+        <button class="btn-primary btn-large" (click)="crearProyecto()">
+          {{ isLoggedIn ? 'Crear Proyecto' : 'Comenzar Ahora' }}
+        </button>
+        <button *ngIf="!isLoggedIn" class="btn-secondary btn-large" routerLink="/login">
+          Iniciar Sesión
+        </button>
+      </div>
+    </div>
+    <div class="hero-image">
+      <div class="timeline-preview">
+        <div class="timeline-line"></div>
+        <div class="timeline-event">Evento 1</div>
+        <div class="timeline-event">Evento 2</div>
+        <div class="timeline-event">Evento 3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Plantillas Section -->
+  <section class="templates-section">
+    <div class="section-header">
+      <h2>Plantillas Destacadas</h2>
+      <p>Comienza con una de nuestras plantillas prediseñadas</p>
+    </div>
+
+    <div *ngIf="isLoading" class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Cargando plantillas...</p>
+    </div>
+
+    <div *ngIf="!isLoading && plantillas.length === 0" class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <h3>No hay plantillas disponibles</h3>
+      <p>Pronto agregaremos nuevas plantillas para que uses</p>
+    </div>
+
+    <div class="templates-grid" *ngIf="!isLoading && plantillas.length > 0">
+      <div class="template-card" *ngFor="let plantilla of plantillas" (click)="usarPlantilla(plantilla)">
+        <div class="template-preview">
+          <div class="template-placeholder">
+            <i class="fas fa-project-diagram"></i>
+          </div>
+        </div>
+        <div class="template-info">
+          <h3>{{ plantilla.nombre }}</h3>
+          <p>{{ plantilla.descripcion || 'Plantilla para línea de tiempo' }}</p>
+          <div class="template-actions">
+            <button class="btn-outline">Usar Plantilla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section">
+    <div class="section-header">
+      <h2>¿Por qué elegirnos?</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <i class="fas fa-paint-brush"></i>
+        <h3>Diseño Intuitivo</h3>
+        <p>Interfaz fácil de usar con herramientas drag-and-drop</p>
+      </div>
+      <div class="feature-card">
+        <i class="fas fa-share-alt"></i>
+        <h3>Comparte Fácilmente</h3>
+        <p>Exporta y comparte tus líneas de tiempo en múltiples formatos</p>
+      </div>
+      <div class="feature-card">
+        <i class="fas fa-users"></i>
+        <h3>Colaboración</h3>
+        <p>Trabaja en equipo en tiempo real en tus proyectos</p>
+      </div>
+    </div>
+  </section>
+
+  
+</div>

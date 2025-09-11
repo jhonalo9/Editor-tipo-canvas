@@ -1,0 +1,44 @@
+.login-container {
+  max-width: 400px;
+  margin: 5rem auto;
+  padding: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  text-align: center;
+  background: #fff;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #0073e6;
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.google-btn {
+  background: #db4437;
+}
+
+.error {
+  color: red;
+  margin-top: 1rem;
+}

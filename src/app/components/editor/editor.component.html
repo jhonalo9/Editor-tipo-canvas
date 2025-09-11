@@ -1,0 +1,42 @@
+<div class="editor-container">
+  <div class="editor-toolbar">
+    <div class="tool-section">
+      <h4>Eventos</h4>
+      <button (click)="addEvent()" class="tool-btn">+ Evento</button>
+      <button (click)="addMilestone()" class="tool-btn">+ Hito</button>
+    </div>
+
+    <div class="tool-section">
+      <h4>Formas</h4>
+      <button (click)="addRectangle()" class="tool-btn">□ Rectángulo</button>
+      <button (click)="addCircle()" class="tool-btn">○ Círculo</button>
+    </div>
+
+    <div class="tool-section">
+      <h4>Texto</h4>
+      <button (click)="addText()" class="tool-btn">+ Texto</button>
+    </div>
+
+    <div class="tool-section">
+      <h4>Dibujo</h4>
+      <input 
+        type="color" 
+        [value]="drawingColor" 
+        (change)="changeDrawingColor($event)">
+      <input 
+        type="range" 
+        min="1" 
+        max="20" 
+        [value]="brushSize" 
+        (change)="changeBrushSize($event)">
+      <span>Tamaño: {{brushSize}}px</span>
+    </div>
+
+    <div class="tool-section">
+      <h4>Exportar</h4>
+      <button (click)="exportAsImage()" class="tool-btn primary">Exportar Imagen</button>
+    </div>
+  </div>
+  
+  <div #container id="konva-container" class="canvas-container"></div>
+</div>

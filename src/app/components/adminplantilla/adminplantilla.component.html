@@ -1,0 +1,50 @@
+<div class="admin-plantilla">
+  <h2>Gestión de Plantillas</h2>
+
+  <!-- Mensajes -->
+  <div *ngIf="mensaje" class="mensaje">{{ mensaje }}</div>
+
+  <!-- Formulario -->
+  <form [formGroup]="plantillaForm" (ngSubmit)="plantillaSeleccionada ? actualizarPlantilla() : crearPlantilla()">
+    <div>
+      <label for="nombre">Nombre</label>
+      <input id="nombre" formControlName="nombre" type="text">
+    </div>
+
+    <div>
+      <label for="descripcion">Descripción</label>
+      <textarea id="descripcion" formControlName="descripcion"></textarea>
+    </div>
+
+    <div>
+      <label for="data">Data (JSON o texto)</label>
+      <textarea id="data" formControlName="data"></textarea>
+    </div>
+
+
+
+    <button type="submit">
+      {{ plantillaSeleccionada ? 'Actualizar' : 'Crear' }}
+    </button>
+    <button *ngIf="plantillaSeleccionada" type="button" (click)="plantillaSeleccionada = null; plantillaForm.reset()">
+      Cancelar
+    </button>
+  </form>
+
+  <hr>
+
+  <!-- Lista de Plantillas -->
+  <h3>Mis Plantillas</h3>
+  <div *ngIf="plantillas.length === 0">No hay plantillas creadas</div>
+  <ul>
+    <li *ngFor="let p of plantillas">
+      <strong>{{ p.nombre }}</strong> - {{ p.descripcion }}
+      <button (click)="seleccionarPlantilla(p)">Editar</button>
+      <button (click)="eliminarPlantilla(p.id || p.idPlantilla)">Eliminar</button>
+    </li>
+  </ul>
+
+   
+</div>
+
+ <app-editor-admin></app-editor-admin>
