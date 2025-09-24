@@ -3,14 +3,14 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Router } from '@angular/router';
 import { AuthService, LoginRequest } from '../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
-
+import { RouterModule } from '@angular/router';
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css'],
   imports: [
    
-    FormsModule ,CommonModule,ReactiveFormsModule // 👈 Agregar aquí
+    FormsModule ,CommonModule,ReactiveFormsModule, RouterModule// 👈 Agregar aquí
   ],
 })
 export class LoginComponent implements OnInit {
@@ -55,7 +55,7 @@ onLogin(): void {
       if (res.rol === 'admin') {
         this.router.navigate(['/admin/plantillas']);   // admin
       } else {
-        this.router.navigate(['/editor']);               // usuario normal
+        this.router.navigate(['/']);               // usuario normal
       }
     },
     error: (err) => {

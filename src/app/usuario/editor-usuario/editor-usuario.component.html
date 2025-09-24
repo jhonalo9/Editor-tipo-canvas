@@ -1,1 +1,210 @@
-<p>editor-usuario works!</p>
+<div class="user-projects-container">
+  <!-- Header -->
+  <div class="header">
+    <h1>🎨 {{ tituloProyecto }}</h1>
+    <h3>{{descripcionProyecto}}</h3>
+    <p>Crea, edita y gestiona tus diseños personalizados</p>
+  </div>
+
+  <!-- Barra de herramientas principal -->
+  <div class="main-toolbar">
+    <div class="toolbar-group">
+      <button class="btn btn-primary" (click)="openTemplatesModal()">
+        📁 Usar Plantilla
+      </button>
+      <button class="btn btn-secondary" (click)="openProjectsModal()">
+        💼 Mis Proyectos
+      </button>
+    </div>
+    
+    <div class="toolbar-group">
+      <button class="btn btn-info" (click)="previsualizarPortada()" 
+              [disabled]="proyectoForm.invalid || !editorComponent">
+        👁️ Previsualizar Portada
+      </button>
+      <button class="btn btn-success" (click)="descargarProyecto()">
+        💾 Exportar
+      </button>
+      <button class="btn btn-outline" (click)="nuevoProyecto()">
+        🆕 Nuevo
+      </button>
+    </div>
+  </div>
+
+  <!-- Editor con contenedor para captura -->
+  <div class="editor-section">
+    <div #editorContainer class="editor-capture-container">
+      <app-editor-admin #editor></app-editor-admin>
+    </div>
+  </div>
+
+  <!-- Panel de guardado -->
+  <div class="save-panel">
+    <h3>💾 Guardar Proyecto</h3>
+    <form [formGroup]="proyectoForm" class="save-form">
+      <div class="form-group">
+        <label for="titulo">Título del proyecto:</label>
+        <input type="text" id="titulo" formControlName="titulo" 
+               placeholder="Ej: Mi Línea de Tiempo Personal">
+      </div>
+      
+      <div class="form-group">
+        <label for="descripcion">Descripción:</label>
+        <textarea id="descripcion" formControlName="descripcion"
+                  placeholder="Describe tu proyecto..."></textarea>
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" 
+                (click)="guardarProyecto()" 
+                [disabled]="proyectoForm.invalid || !editorComponent">
+          {{ proyectoSeleccionado ? '💾 Actualizar' : '💾 Guardar' }} Proyecto
+        </button>
+        
+        <button type="button" class="btn btn-danger" 
+                *ngIf="proyectoSeleccionado"
+                (click)="eliminarProyecto(proyectoSeleccionado)">
+          🗑️ Eliminar
+        </button>
+      </div>
+      
+      <!-- Información sobre portada automática -->
+      <div class="portada-info" *ngIf="proyectoSeleccionado && proyectoSeleccionado.portadaUrl">
+        <p>📷 Portada generada automáticamente</p>
+        <img [src]="obtenerUrlPortada(proyectoSeleccionado.portadaUrl)" 
+             alt="Portada del proyecto" 
+             class="portada-thumbnail"
+             (click)="verPortadaCompleta(proyectoSeleccionado.portadaUrl)">
+      </div>
+    </form>
+  </div>
+
+  <!-- Mensajes de estado -->
+  <div class="message" *ngIf="mensaje" [class.error]="mensaje.includes('Error')">
+    {{ mensaje }}
+  </div>
+
+  <!-- Modal de Previsualización de Portada -->
+  <div class="modal" [class.show]="previsualizacionPortada">
+    <div class="modal-content large-modal">
+      <div class="modal-header">
+        <h2>👁️ Previsualización de Portada</h2>
+        <button class="close-btn" (click)="previsualizacionPortada = null">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="preview-container">
+          <img [src]="previsualizacionPortada || ''" alt="Previsualización de portada" class="preview-image">
+          <p class="preview-info">Esta es la portada que se generará automáticamente al guardar el proyecto</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="guardarProyecto()" 
+                [disabled]="proyectoForm.invalid">
+          💾 Guardar Proyecto con esta Portada
+        </button>
+        <button class="btn btn-secondary" (click)="previsualizacionPortada = null">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Plantillas -->
+  <div class="modal" [class.show]="showTemplatesModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📁 Elegir Plantilla</h2>
+        <button class="close-btn" (click)="closeTemplatesModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="templates-grid">
+          <div class="template-card" *ngFor="let plantilla of plantillas">
+            <!-- Solo mostrar portada si existe -->
+            <div class="template-preview" *ngIf="plantilla.portadaUrl">
+              <img [src]="obtenerUrlPortada(plantilla.portadaUrl)" 
+                   alt="Portada de plantilla" 
+                   class="template-thumbnail">
+            </div>
+            <div class="template-info">
+              <h3>{{ plantilla.nombre }}</h3>
+              <p>{{ plantilla.descripcion || 'Plantilla lista para usar' }}</p>
+              <div class="template-actions">
+                <button class="btn-primary" (click)="empezarConPlantilla(plantilla)">
+                  Usar Esta Plantilla
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeTemplatesModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Proyectos Guardados -->
+  <div class="modal" [class.show]="showProjectsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>💼 Mis Proyectos Guardados</h2>
+        <button class="close-btn" (click)="closeProjectsModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="projects-list">
+          <div class="project-card" *ngFor="let proyecto of proyectos">
+            <!-- Portada del proyecto -->
+            <div class="project-preview" *ngIf="proyecto.portadaUrl">
+              <img [src]="obtenerUrlPortada(proyecto.portadaUrl)" 
+                   alt="Portada del proyecto" 
+                   class="project-thumbnail">
+            </div>
+            
+            <div class="project-info">
+              <h3>{{ proyecto.titulo }}</h3>
+              <p>{{ proyecto.descripcion || 'Sin descripción' }}</p>
+              <div class="project-meta">
+                <span class="project-date">
+                  {{ proyecto.fechaModificacion | date:'short' }}
+                </span>
+                <span class="project-portada" *ngIf="proyecto.portadaUrl">
+                  📷 Con portada
+                </span>
+                <span class="project-sin-portada" *ngIf="!proyecto.portadaUrl">
+                  📷 Sin portada
+                </span>
+              </div>
+            </div>
+            
+            <div class="project-actions">
+              <button class="btn-primary" (click)="cargarProyecto(proyecto)">
+                Abrir
+              </button>
+              <button class="btn-danger" (click)="eliminarProyecto(proyecto)">
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="proyectos.length === 0">
+            <p>No tienes proyectos guardados todavía.</p>
+            <p>¡Crea tu primer proyecto usando una plantilla!</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeProjectsModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

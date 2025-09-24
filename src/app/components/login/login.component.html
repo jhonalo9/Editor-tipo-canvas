@@ -1,4 +1,9 @@
 <div class="login-container">
+  <!-- Flecha de regreso -->
+  <div class="back-home">
+    <a routerLink="/">&#8592; Volver</a>
+  </div>
+
   <h2>Iniciar Sesión</h2>
 
   <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
@@ -11,7 +16,10 @@
         formControlName="email"
         placeholder="Ingresa tu correo"
       />
-      <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="error">
+      <div
+        *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+        class="error"
+      >
         Ingresa un correo válido
       </div>
     </div>
@@ -25,22 +33,28 @@
         formControlName="password"
         placeholder="Ingresa tu contraseña"
       />
-      <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error">
+      <div
+        *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+        class="error"
+      >
         La contraseña es requerida
       </div>
     </div>
 
-    <!-- Botón -->
+    <!-- Botón de login -->
     <button type="submit" [disabled]="loginForm.invalid || isLoading">
-      {{ isLoading ? 'Ingresando...' : 'Ingresar' }}
+      {{ isLoading ? "Ingresando..." : "Ingresar" }}
     </button>
 
     <!-- Mensajes de error -->
-    <div *ngIf="mensaje" class="error-message">
-      {{ mensaje }}
-    </div>
+    <div *ngIf="mensaje" class="error-message">{{ mensaje }}</div>
     <div *ngIf="errorMessage" class="error-message">
       {{ errorMessage }}
     </div>
   </form>
+
+  <!-- Footer -->
+  <div class="register-footer">
+    <p>¿No tienes cuenta? <a routerLink="/register">Regístrate aquí</a></p>
+  </div>
 </div>

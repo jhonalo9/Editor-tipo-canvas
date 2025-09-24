@@ -1,11 +1,14 @@
 <div class="register-container">
   <div class="register-card">
+    <div class="back-home">
+    <a routerLink="/">&#8592; Volver</a>
+  </div>
     <div class="register-header">
       <h2>Crear Cuenta</h2>
       <p>Únete a Timeline Editor y comienza a crear</p>
     </div>
 
-    <form (ngSubmit)="onSubmit()" class="register-form">
+    <form (ngSubmit)="onSubmit()" class="register-form" #registerForm="ngForm">
       <div class="form-group">
         <label for="nombre">Nombre Completo</label>
         <input
@@ -14,8 +17,14 @@
           [(ngModel)]="userData.nombre"
           name="nombre"
           required
+          minlength="2"
           placeholder="Tu nombre completo"
+          #nombre="ngModel"
         >
+        <div *ngIf="nombre.invalid && nombre.touched" class="error">
+          <span *ngIf="nombre.errors?.['required']">El nombre es requerido</span>
+          <span *ngIf="nombre.errors?.['minlength']">Mínimo 2 caracteres</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -26,8 +35,14 @@
           [(ngModel)]="userData.email"
           name="email"
           required
+          email
           placeholder="tu@email.com"
+          #email="ngModel"
         >
+        <div *ngIf="email.invalid && email.touched" class="error">
+          <span *ngIf="email.errors?.['required']">El correo es requerido</span>
+          <span *ngIf="email.errors?.['email']">Correo electrónico inválido</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -38,8 +53,14 @@
           [(ngModel)]="userData.password"
           name="password"
           required
-          placeholder="••••••••"
+          minlength="6"
+          placeholder="Mínimo 6 caracteres"
+          #password="ngModel"
         >
+        <div *ngIf="password.invalid && password.touched" class="error">
+          <span *ngIf="password.errors?.['required']">La contraseña es requerida</span>
+          <span *ngIf="password.errors?.['minlength']">Mínimo 6 caracteres</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -50,7 +71,7 @@
           [(ngModel)]="confirmPassword"
           name="confirmPassword"
           required
-          placeholder="••••••••"
+          placeholder="Confirma tu contraseña"
         >
       </div>
 
@@ -58,7 +79,11 @@
         {{ errorMessage }}
       </div>
 
-      <button type="submit" class="btn-primary" [disabled]="isLoading">
+      <button 
+        type="submit" 
+        class="btn-primary" 
+        [disabled]="registerForm.invalid || isLoading || (userData.password !== confirmPassword)"
+      >
         {{ isLoading ? 'Creando cuenta...' : 'Crear Cuenta' }}
       </button>
     </form>

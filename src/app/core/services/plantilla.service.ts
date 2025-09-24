@@ -9,7 +9,9 @@ export interface Plantilla {
   data: any;
   creadoPor?: any;
   esPublica?: boolean;
+  portadaUrl?: string;
 }
+
 
 
 
@@ -17,6 +19,7 @@ export interface PlantillaRequest {
   nombre: string;
   descripcion: string;
   data: any;
+  portadaUrl?: string;
 }
 
 export interface Plantilla extends PlantillaRequest {

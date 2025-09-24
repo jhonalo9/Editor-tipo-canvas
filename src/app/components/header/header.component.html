@@ -1,1 +1,29 @@
-<p>header works!</p>
+<header class="header">
+  <div class="logo">
+    
+    <a routerLink="/"><img src='assets/images/logo_oficial.png' alt=""></a>
+    <!--TimelineApp-->
+  </div>
+
+  <nav class="nav">
+    <!-- Cuando el usuario NO está logueado -->
+    <div *ngIf="!isLoggedIn" class="auth-buttons">
+      <button class="btn-secondary" routerLink="/login">Iniciar Sesión</button>
+      <button class="btn-register" routerLink="/register">Regístrate</button>
+    </div>
+
+    <!-- Cuando el usuario YA está logueado -->
+    <div *ngIf="isLoggedIn" class="user-menu">
+  <div class="dropdown" [class.open]="isMenuOpen">
+    <button class="btn-account" (click)="toggleMenu()">
+      <i class="fas fa-user-circle"></i> Mi Cuenta <i class="fas fa-caret-down"></i>
+    </button>
+    <ul class="dropdown-menu" *ngIf="isMenuOpen">
+      <li><a routerLink="/mis-proyectos"><i class="fas fa-folder-open"></i> Mis Proyectos</a></li>
+      <li><a (click)="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
+    </ul>
+  </div>
+</div>
+
+  </nav>
+</header>

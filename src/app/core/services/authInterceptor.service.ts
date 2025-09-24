@@ -8,21 +8,28 @@ import {
 import { Observable } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
+
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-
   constructor(private authService: AuthService) {}
 
-  intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    // Obtener el token del servicio
     const token = this.authService.getToken();
     
+    console.log('🔐 Interceptor - Token presente:', !!token);
+    
     if (token) {
-      const cloned = request.clone({
-        headers: request.headers.set('Authorization', `Bearer ${token}`)
+      // Clonar la request y añadir el header Authorization
+      const authReq = req.clone({
+        headers: req.headers.set('Authorization', `Bearer ${token}`)
       });
-      return next.handle(cloned);
+      
+      console.log('✅ Headers de la request:', authReq.headers);
+      return next.handle(authReq);
     }
     
-    return next.handle(request);
+    console.log('❌ Sin token, request sin modificar');
+    return next.handle(req);
   }
 }

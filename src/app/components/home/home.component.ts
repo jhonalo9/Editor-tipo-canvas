@@ -5,16 +5,17 @@ import { PlantillaService } from '../../core/services/plantilla.service';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
+import { RouterModule } from '@angular/router';
+import { HeaderComponent } from "../header/header.component";
 @Component({
   selector: 'app-home',
   standalone: true,
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css'],
   imports: [
-   
-    FormsModule,CommonModule  // 👈 Agregar aquí
-  ],
+    FormsModule, CommonModule, RouterModule,
+    HeaderComponent
+],
 })
 export class HomeComponent implements OnInit {
   isLoggedIn = false;
@@ -72,7 +73,7 @@ cargarPlantillasAdmin(): void {
 
   crearProyecto(): void {
     if (this.isLoggedIn) {
-      this.router.navigate(['/editor']);
+      this.router.navigate(['/usuario/descripcion-proyect']);
     } else {
       this.router.navigate(['/login']);
     }
@@ -80,7 +81,7 @@ cargarPlantillasAdmin(): void {
 
   usarPlantilla(plantilla: any): void {
     if (this.isLoggedIn) {
-      this.router.navigate(['/editor'], { 
+      this.router.navigate(['/usuario/descripcion-proyect'], { 
         state: { plantilla: plantilla } 
       });
     } else {

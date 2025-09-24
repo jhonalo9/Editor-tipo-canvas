@@ -31,20 +31,30 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) {
+    this.loadUserFromStorage();
+  }
+
+  private loadUserFromStorage(): void {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('authToken');
+    
+    if (savedUser && savedToken) {
       try {
-        this.currentUserSubject.next(JSON.parse(savedUser));
+        const user = JSON.parse(savedUser);
+        // Asegurarnos de que el token esté en el objeto user también
+        user.token = savedToken;
+        this.currentUserSubject.next(user);
       } catch (e) {
         console.error('Error al parsear usuario guardado:', e);
-        localStorage.removeItem('user');
+        this.clearStorage();
       }
     }
   }
 
-  login(credentials: { email: string, password: string }): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>('http://localhost:8080/api/auth/login', credentials).pipe(
+  login(credentials: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap(res => {
+        // Guardar tanto en localStorage como asegurar la estructura
         localStorage.setItem('authToken', res.token);
         localStorage.setItem('user', JSON.stringify(res));
         this.currentUserSubject.next(res);
@@ -52,11 +62,15 @@ export class AuthService {
     );
   }
 
-  logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+  logout(): void {
+    this.clearStorage();
     this.currentUserSubject.next(null);
     this.router.navigate(['/home']);
+  }
+
+  private clearStorage(): void {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
   }
 
   getUserRole(): string {
@@ -64,6 +78,25 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!this.currentUserSubject.value;
+    return !!this.currentUserSubject.value && !!this.getToken();
   }
+
+  // ✅ CORREGIDO: Obtener token de localStorage
+  getToken(): string | null {
+    return localStorage.getItem('authToken');
+  }
+
+  register(userData: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData).pipe(
+      tap(res => {
+        // Opcional: auto-login después del registro
+        localStorage.setItem('authToken', res.token);
+        localStorage.setItem('user', JSON.stringify(res));
+        this.currentUserSubject.next(res);
+      })
+    );
+  }
+
+
+  
 }

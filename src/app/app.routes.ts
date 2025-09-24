@@ -9,10 +9,14 @@ import { AuthGuard } from './core/guards/auth.guard';
 import { AdminGuard } from './core/guards/admin.guard';
 import { AdminPlantillaComponent } from './components/adminplantilla/adminplantilla.component';
 import { EditorComponent } from './components/editor/editor.component';
+import { PreviewProyectComponent } from './components/preview-proyect/preview-proyect.component';
+import { PlantillaComponent } from './components/plantilla/plantilla.component';
+import { RegisterComponent } from './components/register/register.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent }, 
   {
    path: 'admin/plantillas',
   component: AdminPlantillaComponent,
@@ -23,6 +27,9 @@ export const routes: Routes = [
   /*{ path: 'admin/plantillas', component: GestionPlantillasComponent, canActivate: [AdminGuard] },*/
   { path: 'usuario/editor/:id', component: EditorComponent},
   { path: 'usuario/proyectos', component: MisProyectosComponent },
+  {path:'usuario/descripcion-proyect',component:PreviewProyectComponent},
+  {path:'usuario/plantillas',component:PlantillaComponent},
+  {path:'usuario/proyecto',component:EditorUsuarioComponent}
   
  
 

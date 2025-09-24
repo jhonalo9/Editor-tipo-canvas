@@ -1,0 +1,18 @@
+<div class="container">
+  <app-header></app-header>
+  <h2>Elige tu estilo</h2>
+
+  <button class="crear">Crear +</button>
+
+  <div class="templates-grid">
+    <div class="template-card" *ngFor="let plantilla of plantillas">
+      <div class="template-info">
+        <h3>{{ plantilla.nombre }}</h3>
+        <p>{{ plantilla.descripcion || 'Plantilla para línea de tiempo' }}</p>
+        <div class="template-actions">
+          <button class="btn-outline">Usar Plantilla</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

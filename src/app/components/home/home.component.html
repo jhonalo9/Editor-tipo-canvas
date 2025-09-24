@@ -1,5 +1,6 @@
 <div class="home-container">
   <!-- Hero Section -->
+   <app-header></app-header>
   <section class="hero-section">
     <div class="hero-content">
       <h1>Crea Líneas de Tiempo Impresionantes</h1>
@@ -8,17 +9,6 @@
         <button class="btn-primary btn-large" (click)="crearProyecto()">
           {{ isLoggedIn ? 'Crear Proyecto' : 'Comenzar Ahora' }}
         </button>
-        <button *ngIf="!isLoggedIn" class="btn-secondary btn-large" routerLink="/login">
-          Iniciar Sesión
-        </button>
-      </div>
-    </div>
-    <div class="hero-image">
-      <div class="timeline-preview">
-        <div class="timeline-line"></div>
-        <div class="timeline-event">Evento 1</div>
-        <div class="timeline-event">Evento 2</div>
-        <div class="timeline-event">Evento 3</div>
       </div>
     </div>
   </section>

@@ -1,50 +1,92 @@
-<div class="admin-plantilla">
-  <h2>Gestión de Plantillas</h2>
+<div class="admin-container">
+  
+  <h2>Administrador de Plantillas</h2>
+  
+  <div *ngIf="!isLoggedIn" class="alert alert-warning">
+    <p>Por favor, inicie sesión para administrar plantillas.</p>
+  </div>
 
-  <!-- Mensajes -->
-  <div *ngIf="mensaje" class="mensaje">{{ mensaje }}</div>
+  <div *ngIf="isLoggedIn">
+    <!-- Formulario de plantilla -->
+    <div class="form-section">
+      <h3>{{ plantillaSeleccionada ? 'Editar Plantilla' : 'Crear Nueva Plantilla' }}</h3>
+      
+      <form [formGroup]="plantillaForm">
+        <div class="form-group">
+          <label for="nombre">Nombre:</label>
+          <input id="nombre" type="text" formControlName="nombre" class="form-control" 
+                 placeholder="Ingrese el nombre de la plantilla">
+          <div *ngIf="plantillaForm.get('nombre')?.invalid && plantillaForm.get('nombre')?.touched" 
+               class="error-message">
+            El nombre es requerido
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="descripcion">Descripción:</label>
+          <textarea id="descripcion" formControlName="descripcion" class="form-control"
+                    placeholder="Descripción opcional de la plantilla"></textarea>
+        </div>
+        
+        <div class="button-group">
+          <button *ngIf="!plantillaSeleccionada" type="button" 
+                  (click)="crearPlantilla()" 
+                  [disabled]="plantillaForm.invalid" class="btn btn-primary">
+            Crear Plantilla
+          </button>
+          
+          <button *ngIf="plantillaSeleccionada" type="button" 
+                  (click)="actualizarPlantilla()" 
+                  [disabled]="plantillaForm.invalid" class="btn btn-success">
+            Actualizar Plantilla
+          </button>
+          
+          <button *ngIf="plantillaSeleccionada" type="button" 
+                  (click)="cancelarEdicion()" 
+                  class="btn btn-secondary">
+            Cancelar
+          </button>
 
-  <!-- Formulario -->
-  <form [formGroup]="plantillaForm" (ngSubmit)="plantillaSeleccionada ? actualizarPlantilla() : crearPlantilla()">
-    <div>
-      <label for="nombre">Nombre</label>
-      <input id="nombre" formControlName="nombre" type="text">
+          <button type="button" (click)="nuevaPlantilla()" class="btn btn-info">
+            Nueva Plantilla
+          </button>
+        </div>
+      </form>
+      
+      <div *ngIf="mensaje" class="alert alert-info mt-3">{{ mensaje }}</div>
     </div>
 
-    <div>
-      <label for="descripcion">Descripción</label>
-      <textarea id="descripcion" formControlName="descripcion"></textarea>
+    <!-- Editor -->
+    <div class="editor-section">
+      <h3>Editor de Plantillas</h3>
+      <p class="editor-instructions">Use las herramientas abajo para crear su diseño, luego guarde la plantilla.</p>
+      <app-editor-admin #editor></app-editor-admin>
     </div>
 
-    <div>
-      <label for="data">Data (JSON o texto)</label>
-      <textarea id="data" formControlName="data"></textarea>
+    <!-- Lista de plantillas existentes -->
+    <div class="plantillas-section">
+      <h3>Plantillas Existentes</h3>
+      
+      <div *ngIf="plantillas.length === 0" class="alert alert-info">
+        No hay plantillas disponibles. Cree una nueva plantilla usando el editor.
+      </div>
+      
+      <div *ngIf="plantillas.length > 0" class="plantillas-list">
+        <div *ngFor="let plantilla of plantillas" class="plantilla-item"
+             [class.selected]="plantillaSeleccionada?.id === plantilla.id">
+          <h4>{{ plantilla.nombre }}</h4>
+          <p *ngIf="plantilla.descripcion">{{ plantilla.descripcion }}</p>
+          
+          <div class="plantilla-actions">
+            <button (click)="seleccionarPlantilla(plantilla)" class="btn btn-sm btn-outline-primary">
+              {{ plantillaSeleccionada?.id === plantilla.id ? 'Editando...' : 'Editar' }}
+            </button>
+            <button (click)="eliminarPlantilla(plantilla)" class="btn btn-sm btn-outline-danger">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-
-
-
-    <button type="submit">
-      {{ plantillaSeleccionada ? 'Actualizar' : 'Crear' }}
-    </button>
-    <button *ngIf="plantillaSeleccionada" type="button" (click)="plantillaSeleccionada = null; plantillaForm.reset()">
-      Cancelar
-    </button>
-  </form>
-
-  <hr>
-
-  <!-- Lista de Plantillas -->
-  <h3>Mis Plantillas</h3>
-  <div *ngIf="plantillas.length === 0">No hay plantillas creadas</div>
-  <ul>
-    <li *ngFor="let p of plantillas">
-      <strong>{{ p.nombre }}</strong> - {{ p.descripcion }}
-      <button (click)="seleccionarPlantilla(p)">Editar</button>
-      <button (click)="eliminarPlantilla(p.id || p.idPlantilla)">Eliminar</button>
-    </li>
-  </ul>
-
-   
+  </div>
 </div>
-
- <app-editor-admin></app-editor-admin>

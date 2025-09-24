@@ -1,44 +1,141 @@
+/* Contenedor principal */
 .login-container {
   max-width: 400px;
-  margin: 5rem auto;
+  margin: 80px auto;
   padding: 2rem;
-  border: 1px solid #ddd;
+  background: #ffffff;
   border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Título */
+.login-container h2 {
   text-align: center;
-  background: #fff;
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+}
+
+/* Grupos de formulario */
+.form-group {
+  margin-bottom: 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: #444;
 }
 
 input {
-  display: block;
-  width: 100%;
-  margin: 0.5rem 0;
-  padding: 0.75rem;
-  border-radius: 8px;
+  padding: 0.7rem;
   border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
+/* Focus en input */
+input:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 6px rgba(74, 144, 226, 0.4);
+}
+
+/* Botón */
 button {
-  background: #0073e6;
-  border: none;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 1rem;
   width: 100%;
+  padding: 0.8rem;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+  background: #357abd;
 }
 
 button:disabled {
-  opacity: 0.6;
+  background: #a1c4f1;
   cursor: not-allowed;
 }
 
-.google-btn {
-  background: #db4437;
+/* Mensajes de error */
+.error {
+  color: #d9534f;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
 }
 
-.error {
-  color: red;
+.error-message {
+  color: #d9534f;
+  background: #f9d6d5;
+  padding: 0.6rem;
+  border-radius: 6px;
   margin-top: 1rem;
+  text-align: center;
 }
+
+/* Footer del registro */
+.register-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.register-footer a {
+  color: #4a90e2;
+  font-weight: bold;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.register-footer a:hover {
+  color: #357abd;
+}
+
+.go-home {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.home-btn {
+  padding: 10px 20px;
+  background: #6c63ff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.home-btn:hover {
+  background: #5848d1;
+}
+
+.back-home {
+  margin-bottom: 15px;
+}
+
+.back-home a {
+  text-decoration: none;
+  font-size: 18px;
+  color: #6c63ff;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.back-home a:hover {
+  color: #5848d1;
+}
+
+

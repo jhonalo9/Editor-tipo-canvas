@@ -1,0 +1,21 @@
+<app-header></app-header>
+<div class="card">
+  <h2 class="title">Titulo de tu linea</h2>
+
+  <input
+    type="text"
+    placeholder="Personajes Historicos del Peru"
+    [(ngModel)]="titulo"
+    class="input"
+  />
+
+  <label class="label">Descripcion corta</label>
+  <input
+    type="text"
+    placeholder="Siglo XIX Y XX"
+    [(ngModel)]="descripcion"
+    class="input"
+  />
+
+  <button class="btn" (click)="empezar()">Empezar</button>
+</div>
