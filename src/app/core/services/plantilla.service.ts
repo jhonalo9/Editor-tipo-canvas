@@ -1,29 +1,28 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams,HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environment/environment';
+
+// ✅ CORREGIDO: Interfaces que coinciden con la respuesta del backend
 export interface Plantilla {
-  idPlantilla?: number;
+  id: number; // ← Cambiado de idPlantilla a id
   nombre: string;
   descripcion: string;
-  data: any;
-  creadoPor?: any;
-  esPublica?: boolean;
+  data: any; // Puede ser string JSON u objeto
+  estado: string;
+  esPublica: boolean;
+  creadoPorId: number;
+  creadoPorNombre: string;
+  fechaCreacion: string;
   portadaUrl?: string;
 }
-
-
-
 
 export interface PlantillaRequest {
   nombre: string;
   descripcion: string;
   data: any;
   portadaUrl?: string;
-}
-
-export interface Plantilla extends PlantillaRequest {
-  id: number;
+  esPublica?: boolean;
 }
 
 @Injectable({
@@ -36,17 +35,20 @@ export class PlantillaService {
 
   private getAuthHeaders() {
     const token = localStorage.getItem('authToken');
-    return { Authorization: `Bearer ${token}` };
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
   }
 
-
-
   getPlantillasPublicas(): Observable<Plantilla[]> {
-    return this.http.get<Plantilla[]>(`${this.apiUrl}/public`);
+    return this.http.get<Plantilla[]>(`${this.apiUrl}/publicas`);
   }
 
   getPlantillasAdmin(): Observable<Plantilla[]> {
-    return this.http.get<Plantilla[]>(`${this.apiUrl}/admin`, { headers: this.getAuthHeaders() });
+    return this.http.get<Plantilla[]>(`${this.apiUrl}/admin`, { 
+      headers: this.getAuthHeaders() 
+    });
   }
 
   getPlantillaById(id: number): Observable<Plantilla> {
@@ -54,14 +56,33 @@ export class PlantillaService {
   }
 
   createPlantilla(plantilla: PlantillaRequest): Observable<Plantilla> {
-    return this.http.post<Plantilla>(`${this.apiUrl}/admin`, plantilla, { headers: this.getAuthHeaders() });
+    return this.http.post<Plantilla>(`${this.apiUrl}/admin`, plantilla, { 
+      headers: this.getAuthHeaders() 
+    });
   }
 
   updatePlantilla(id: number, plantilla: PlantillaRequest): Observable<Plantilla> {
-    return this.http.put<Plantilla>(`${this.apiUrl}/admin/${id}`, plantilla, { headers: this.getAuthHeaders() });
+    return this.http.put<Plantilla>(`${this.apiUrl}/admin/${id}`, plantilla, { 
+      headers: this.getAuthHeaders() 
+    });
   }
 
   deletePlantilla(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/admin/${id}`, { headers: this.getAuthHeaders() });
+    return this.http.delete(`${this.apiUrl}/admin/${id}`, { 
+      headers: this.getAuthHeaders() 
+    });
+  }
+
+  // ✅ NUEVO: Método para parsear data si viene como string
+  parsePlantillaData(plantilla: Plantilla): any {
+    if (typeof plantilla.data === 'string') {
+      try {
+        return JSON.parse(plantilla.data);
+      } catch (error) {
+        console.error('Error parseando data de plantilla:', error);
+        return {};
+      }
+    }
+    return plantilla.data;
   }
 }

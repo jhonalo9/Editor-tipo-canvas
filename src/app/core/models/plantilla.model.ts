@@ -5,3 +5,5 @@ export interface Plantilla {
   data: string; // JSON string
   creado_por?: number;
 }
+
+

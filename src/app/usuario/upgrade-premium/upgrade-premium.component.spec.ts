@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { EditorUsuarioComponent } from './editor-usuario.component';
+import { UpgradePremiumComponent } from './upgrade-premium.component';
 
-describe('EditorUsuarioComponent', () => {
-  let component: EditorUsuarioComponent;
-  let fixture: ComponentFixture<EditorUsuarioComponent>;
+describe('UpgradePremiumComponent', () => {
+  let component: UpgradePremiumComponent;
+  let fixture: ComponentFixture<UpgradePremiumComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EditorUsuarioComponent]
+      imports: [UpgradePremiumComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(EditorUsuarioComponent);
+    fixture = TestBed.createComponent(UpgradePremiumComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

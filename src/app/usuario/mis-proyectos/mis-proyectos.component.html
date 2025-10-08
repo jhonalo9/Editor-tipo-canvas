@@ -1,1 +1,97 @@
-<p>mis-proyectos works!</p>
+<app-header></app-header>
+
+<div class="proyectos-container">
+  <div class="proyectos-header">
+    <h1>Mis Proyectos</h1>
+    <p>Gestiona y visualiza todos tus proyectos de líneas de tiempo</p>
+  </div>
+
+  <!-- Estado de carga -->
+  <div *ngIf="cargando" class="loading-state">
+    <div class="spinner"></div>
+    <p>Cargando proyectos...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error && !cargando" class="error-state">
+    <div class="error-icon">⚠️</div>
+    <p>{{ error }}</p>
+    <button (click)="cargarProyectos()" class="btn-retry">Reintentar</button>
+  </div>
+
+  <!-- Lista de proyectos -->
+  <div *ngIf="!cargando && !error" class="proyectos-grid">
+    
+    <!-- Proyecto individual -->
+    <div *ngFor="let proyecto of proyectos" class="proyecto-card">
+      
+      <!-- Imagen de portada real del servidor -->
+      <div class="proyecto-portada">
+        <img 
+          [src]="getPortadaProyecto(proyecto)" 
+          [alt]="proyecto.titulo"
+          class="portada-image"
+          (error)="onImageError($event, proyecto)"
+          loading="lazy">
+        
+        <!-- Overlay de información -->
+        <div class="portada-overlay">
+          <div class="portada-stats">
+            <span class="stat">{{ getInfoProyecto(proyecto).totalEventos }} eventos</span>
+            <span class="stat">{{ getInfoProyecto(proyecto).elementos }} elementos</span>
+          </div>
+          
+        </div>
+
+        <!-- Indicador de portada personalizada -->
+       
+      </div>
+
+      <!-- Información del proyecto -->
+      <div class="proyecto-info">
+        <h3 class="proyecto-title">{{ proyecto.titulo }}</h3>
+        <p class="proyecto-descripcion" *ngIf="proyecto.descripcion">
+          {{ proyecto.descripcion }}
+        </p>
+        
+        <div class="proyecto-meta">
+          <div class="meta-item">
+            <span class="meta-label">📅 Rango:</span>
+            <span class="meta-value">{{ getInfoProyecto(proyecto).rangoAnios }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">🕒 Modificado:</span>
+            <span class="meta-value">{{ formatearFecha(proyecto.fechaModificacion) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="proyecto-actions">
+        <button 
+          (click)="abrirProyecto(proyecto)" 
+          class="btn btn-primary btn-abrir">
+          <span class="btn-icon"></span>
+          Abrir
+        </button>
+        
+        <button 
+          (click)="eliminarProyecto(proyecto, $event)" 
+          class="btn btn-danger btn-eliminar">
+          <span class="btn-icon"></span>
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado vacío -->
+  <div *ngIf="proyectos.length === 0 && !cargando && !error" class="empty-state">
+    <div class="empty-icon">📊</div>
+    <h3>No tienes proyectos guardados</h3>
+    <p>Comienza creando tu primera línea de tiempo en el editor</p>
+    <button class="btn btn-primary" routerLink="/usuario/descripcion-proyect">
+      Crear primer proyecto
+    </button>
+  </div>
+</div>

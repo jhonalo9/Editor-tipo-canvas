@@ -1,42 +1,421 @@
-<div class="editor-container">
-  <div class="editor-toolbar">
-    <div class="tool-section">
-      <h4>Eventos</h4>
-      <button (click)="addEvent()" class="tool-btn">+ Evento</button>
-      <button (click)="addMilestone()" class="tool-btn">+ Hito</button>
-    </div>
+<div class="topbar">
+  <div class="brand">
+    <a routerLink="/">
+      <img src="assets/images/logo_oficial.png" alt="Logo" class="logo">
+    </a>
+  </div>
 
-    <div class="tool-section">
-      <h4>Formas</h4>
-      <button (click)="addRectangle()" class="tool-btn">□ Rectángulo</button>
-      <button (click)="addCircle()" class="tool-btn">○ Círculo</button>
-    </div>
 
-    <div class="tool-section">
-      <h4>Texto</h4>
-      <button (click)="addText()" class="tool-btn">+ Texto</button>
-    </div>
 
-    <div class="tool-section">
-      <h4>Dibujo</h4>
-      <input 
-        type="color" 
-        [value]="drawingColor" 
-        (change)="changeDrawingColor($event)">
-      <input 
-        type="range" 
-        min="1" 
-        max="20" 
-        [value]="brushSize" 
-        (change)="changeBrushSize($event)">
-      <span>Tamaño: {{brushSize}}px</span>
-    </div>
+  <div class="toggle-button-cover">
+        <div id="button-3" class="button r">
+         
+          <input 
+        type="checkbox" 
+        [(ngModel)]="autoUpdateYears"
+        class="checkbox">
+        
+          <div class="knobs"></div>
+          <div class="layer"></div>
+        </div>
+      </div>
 
-    <div class="tool-section">
-      <h4>Exportar</h4>
-      <button (click)="exportAsImage()" class="tool-btn primary">Exportar Imagen</button>
+
+
+
+
+  <div class="top-actions">
+  <button class="btn-azul" (click)="abrirModalGuardarProyecto()" title="Guardar Proyecto">
+    <span>Guardar</span>
+  </button>
+
+  <div class="exportar-wrapper">
+    <button class="btn-verde" (click)="toggleExportMenu()" title="Exportar">
+      <span>Exportar</span>
+     <i class="fa-solid fa-arrow-up-right-from-square"></i>
+    </button>
+
+    <!-- Menú flotante -->
+    <div class="export-menu" *ngIf="mostrarMenuExportar">
+      <button (click)="exportAsImage()" class="export-option">
+        <i class="fa-solid fa-download"></i>
+        <span>Descargar</span>
+      </button>
+
+      <button (click)="compartirProyecto()" class="export-option">
+        <i class="fa-solid fa-link"></i>
+        <span>Compartir</span>
+      </button>
     </div>
   </div>
-  
-  <div #container id="konva-container" class="canvas-container"></div>
 </div>
+</div>
+
+<div class="workspace">
+  <aside class="sidebar">
+<div class="section">
+      <h4>Nuevo Evento</h4>
+      <button class="btn-accent full" (click)="openEventModal()">+ Añadir Evento</button>
+    </div>
+<h4>Cambiar de Plantilla</h4>
+    <div class="section">
+      <button class="btn-primary full" (click)="abrirSelectorPlantillasDiseno()">
+        <i class="fa-solid fa-palette"></i> Cambiar Plantilla
+      </button>
+    </div>
+
+    
+
+    <div class="section">
+      <h4>🎨 Fondo</h4>
+      <div class="color-palette">
+        <div *ngFor="let color of backgroundColors"
+             class="color-option"
+             [style.background]="color"
+             [class.active]="backgroundColor === color"
+             (click)="changeBackgroundColor(color)">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      
+      <button class="btn-outline full" (click)="cargarMisProyectos()">
+        <i class="fa-solid fa-folder-open"></i> Ver mis Proyectos
+      </button>
+      <button class="btn-outline full" (click)="abrirModalGuardarProyecto()">
+        <i class="fa-solid fa-save"></i> Guardar Actual
+      </button>
+
+      <div class="projects-list" *ngIf="misProyectos.length > 0">
+        <div *ngFor="let proyecto of misProyectos" 
+             class="project-card" 
+             (click)="cargarProyecto(proyecto.id!)">
+          <div class="project-icon">📊</div>
+          <div class="project-info">
+            <h5>{{ proyecto.titulo }}</h5>
+            <span>{{ proyecto.fechaModificacion | date:'shortDate' }}</span>
+          </div>
+        </div>
+      </div>
+
+     
+    </div>
+
+    <div class="section">
+      <h4>📝 Estilos de Texto</h4>
+      <div class="style-group">
+        <label>Título</label>
+        <select (change)="cambiarEstiloTexto('titulo', 'color', $any($event.target).value)">
+          <option value="">Color...</option>
+          <option value="#222">Negro</option>
+          <option value="#3b82f6">Azul</option>
+          <option value="#ef4444">Rojo</option>
+          <option value="#10b981">Verde</option>
+        </select>
+      </div>
+      <div class="style-group">
+        <label>Descripción</label>
+        <select (change)="cambiarEstiloTexto('descripcion', 'tamaño', $any($event.target).value)">
+          <option value="">Tamaño...</option>
+          <option value="12">Pequeño</option>
+          <option value="16">Mediano</option>
+          <option value="20">Grande</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+
+  <main class="canvas-area">
+  
+  <div #container id="konva-container" [style.transform]="'scale(' + (containerSize/100) + ')'"></div>
+  
+</main>
+</div>
+
+<div class="canvas-controls">
+  <label for="container-size"></label>
+  <input 
+    type="range" 
+    id="container-size"
+    min="50" 
+    max="150" 
+    step="10" 
+    value="100"
+    [(ngModel)]="containerSize"
+    (input)="onContainerSizeChange()"
+    class="size-slider">
+  <span class="size-value">{{containerSize}}%</span>
+  
+  <div class="presentacion">
+    <button class="presentacion-btn" [class.active]="isPresentacionMode" title="Modo Presentación">
+      <!--<button (click)="togglePresentacion()" class="presentacion-btn" [class.active]="isPresentacionMode" title="Modo Presentación">-->
+      <i class="bi bi-tv"></i>
+      <span>{{ isPresentacionMode ? 'Salir' : 'Presentación' }}</span>
+    </button>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+<!-- Modal para Editar Evento -->
+<div *ngIf="showEditModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Editar Evento</h3>
+    
+    <div class="form-group">
+      <label>Año:</label>
+      <input type="number" [(ngModel)]="editedEvent.year" min="1800" max="2000">
+    </div>
+
+    <div class="form-group">
+      <label>Título:</label>
+      <input type="text" [(ngModel)]="editedEvent.title" placeholder="Título del evento">
+    </div>
+
+    <div class="form-group">
+      <label>Personaje:</label>
+      <input type="text" [(ngModel)]="editedEvent.person" placeholder="Personaje involucrado">
+    </div>
+
+    <div class="form-group">
+      <label>Descripción:</label>
+      <textarea [(ngModel)]="editedEvent.description" placeholder="Descripción del evento" rows="3"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Imagen:</label>
+      <input type="file" (change)="onEditImageSelected($event)" accept="image/*">
+      <div *ngIf="editedEvent.image" class="image-preview">
+        <img [src]="editedEvent.image" alt="Vista previa" style="max-width: 100px; max-height: 100px;">
+        <button type="button" (click)="removeImage()" class="btn-remove">Eliminar imagen</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" (click)="deleteEvent()" class="btn-delete">Eliminar Evento</button>
+      <div>
+        <button type="button" (click)="closeEditModal()" class="btn-cancel">Cancelar</button>
+        <button type="button" (click)="updateEvent()" class="btn-save">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para añadir evento -->
+<div class="modal" [class.active]="showEventModal">
+  <div class="modal-content">
+    <h3>Añadir Nuevo Evento</h3>
+    
+    <div class="form-group">
+      <label for="event-year">Fecha:</label>
+      <input 
+        type="number" 
+        id="event-year" 
+        [(ngModel)]="newEvent.year" 
+        placeholder="Ej: 1917"
+        min="1800"
+        max="2000">
+    </div>
+    
+    <div class="form-group">
+      <label for="event-title">Título de Evento:</label>
+      <input 
+        type="text" 
+        id="event-title" 
+        [(ngModel)]="newEvent.title" 
+        placeholder="Título del evento">
+    </div>
+    
+    <div class="form-group">
+      <label for="event-person">Personaje:</label>
+      <input 
+        type="text" 
+        id="event-person" 
+        [(ngModel)]="newEvent.person" 
+        placeholder="Ej: Cesar Vallejo">
+    </div>
+    
+    <div class="form-group">
+      <label for="event-description">Descripción:</label>
+      <textarea 
+        id="event-description" 
+        [(ngModel)]="newEvent.description" 
+        placeholder="Descripción del evento"
+        rows="3"></textarea>
+    </div>
+    
+    <div class="form-group">
+      <label for="event-image">Imagen:</label>
+      <input 
+        type="file" 
+        id="event-image" 
+        (change)="onImageSelected($event)" 
+        accept="image/*">
+    </div>
+    
+    <div class="modal-buttons">
+      <button (click)="closeEventModal()" class="modal-btn cancel">Cancelar</button>
+      <button (click)="addEventToTimeline()" class="modal-btn add">Añadir a la línea de Tiempo</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Selector de plantillas -->
+<div *ngIf="showTemplateSelector" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Seleccionar Plantilla</h3>
+    <div class="templates-list">
+      <div *ngFor="let template of availableTemplates" 
+           class="template-option"
+           (click)="applyTemplate(template)">
+        <div class="template-preview" 
+             [style.background]="template.styles.backgroundColor"></div>
+        <span>{{template.name}}</span>
+      </div>
+    </div>
+    <button (click)="showTemplateSelector = false" class="btn btn-secondary">
+      Cancelar
+    </button>
+  </div>
+</div>
+
+
+
+<!-- En editor.component.html -->
+<!-- Modal para seleccionar plantillas de diseño -->
+<div *ngIf="showDesignTemplatesModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3>🎨 Seleccionar Diseño de Plantilla</h3>
+    
+    <div class="design-templates-grid">
+      <div *ngFor="let plantilla of plantillasDisponibles" 
+           class="design-template-card"
+           (click)="aplicarPlantillaDiseno(plantilla)">
+        
+        <div class="template-preview" 
+             [style.background]="plantilla.configuracion.backgroundColor">
+          <div class="preview-elements">
+            <!-- Mini preview de los elementos -->
+            <div *ngFor="let elemento of plantilla.configuracion.elementos.slice(0, 3)"
+                 class="preview-element"
+                 [class]="'preview-' + elemento.tipo.toLowerCase()">
+            </div>
+          </div>
+        </div>
+        
+        <div class="template-info">
+          <h4>{{plantilla.nombre}}</h4>
+          <p>{{plantilla.descripcion}}</p>
+          <div class="template-meta">
+            <span>📐 {{plantilla.configuracion.elementos.length}} elementos</span>
+            <span>📅 {{plantilla.fechaCreacion | date:'shortDate'}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" (click)="showDesignTemplatesModal = false">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- MODAL PARA GUARDAR PROYECTO -->
+<div *ngIf="showSaveProjectModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3>💾 Guardar Proyecto</h3>
+    
+    <div *ngIf="!proyectoGuardado" class="form-container">
+      <div class="form-group">
+        <label for="project-name">Nombre del Proyecto:</label>
+        <input 
+          type="text" 
+          id="project-name" 
+          [(ngModel)]="proyectoNombre" 
+          placeholder="Ingresa un nombre para tu proyecto"
+          class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label for="project-description">Descripción:</label>
+        <textarea 
+          id="project-description" 
+          [(ngModel)]="proyectoDescripcion" 
+          placeholder="Describe tu proyecto (opcional)"
+          rows="3"
+          class="form-textarea"></textarea>
+      </div>
+
+      <div class="project-summary">
+        <h4>Resumen del Proyecto:</h4>
+        <div class="summary-items">
+          <div class="summary-item">
+            <span class="summary-label">Eventos:</span>
+            <span class="summary-value">{{timelineEvents.length}}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Elementos:</span>
+            <span class="summary-value">{{serializarElementosKonva().length}}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Rango de años:</span>
+            <span class="summary-value">{{minYear}} - {{maxYear}}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Portada:</span>
+            <span class="summary-value">✅ Automática</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button 
+          type="button" 
+          (click)="cerrarModalGuardarProyecto()" 
+          class="btn btn-secondary">
+          Cancelar
+        </button>
+        <button 
+          type="button" 
+          (click)="guardarProyecto()" 
+          class="btn btn-primary"
+          [disabled]="!proyectoNombre.trim()">
+          {{proyectoActualId ? 'Actualizar' : 'Guardar'}} Proyecto
+        </button>
+      </div>
+    </div>
+
+    <!-- Mensaje de éxito -->
+    <div *ngIf="proyectoGuardado" class="success-message">
+      <div class="success-icon">✅</div>
+      <h4>¡Proyecto Guardado Exitosamente!</h4>
+      <p>Tu proyecto "{{proyectoNombre}}" ha sido guardado correctamente.</p>
+      <button 
+        type="button" 
+        (click)="cerrarModalGuardarProyecto()" 
+        class="btn btn-primary">
+        Continuar Editando
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+

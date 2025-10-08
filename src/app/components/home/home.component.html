@@ -1,6 +1,7 @@
 <div class="home-container">
   <!-- Hero Section -->
-   <app-header></app-header>
+  <app-header></app-header>
+  
   <section class="hero-section">
     <div class="hero-content">
       <h1>Crea Líneas de Tiempo Impresionantes</h1>
@@ -32,15 +33,21 @@
     </div>
 
     <div class="templates-grid" *ngIf="!isLoading && plantillas.length > 0">
-      <div class="template-card" *ngFor="let plantilla of plantillas" (click)="usarPlantilla(plantilla)">
+      <div 
+        class="template-card" 
+        *ngFor="let plantilla of plantillas" 
+        (click)="usarPlantilla(plantilla)"
+        [style.border-left-color]="getPlantillaColor(plantilla)" 
+      >
         <div class="template-preview">
-          <div class="template-placeholder">
-            <i class="fas fa-project-diagram"></i>
+          <div class="template-placeholder" [style.background-color]="getPlantillaColor(plantilla) + '20'">
+            <i class="fas fa-project-diagram" [style.color]="getPlantillaColor(plantilla)"></i>
           </div>
         </div>
         <div class="template-info">
           <h3>{{ plantilla.nombre }}</h3>
           <p>{{ plantilla.descripcion || 'Plantilla para línea de tiempo' }}</p>
+          
           <div class="template-actions">
             <button class="btn-outline">Usar Plantilla</button>
           </div>
@@ -72,6 +79,4 @@
       </div>
     </div>
   </section>
-
-  
 </div>

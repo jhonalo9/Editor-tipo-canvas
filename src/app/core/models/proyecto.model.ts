@@ -1,8 +1,15 @@
 export interface Proyecto {
-  id_proyecto?: number;
-  id_usuario: number;
-  id_plantilla_base?: number;
+  idProyecto?: number;
+  usuario: any;
+  plantillaBase?: any;
   titulo: string;
-  descripcion?: string;
-  data: string; // JSON string
+  descripcion: string;
+ data: {
+    contenido: any;
+    configuracion?: any;
+    portadaUrl?: string;  // ✅ Ahora dentro de data
+    [key: string]: any;
+  };
+  fechaCreacion?: Date;
+  fechaModificacion?: Date;
 }

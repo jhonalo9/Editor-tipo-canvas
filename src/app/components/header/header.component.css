@@ -111,3 +111,36 @@ img{
   margin-top: -10px;
   height: 55px;
 }
+
+
+.nav-link {
+  text-decoration: none;
+  color: #555;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: #1e88ce;
+  background-color: rgba(30, 136, 206, 0.05);
+}
+
+.nav-link.router-link-active {
+  color: #1e88ce;
+  font-weight: 600;
+}
+
+.nav-link.router-link-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background-color: #1e88ce;
+  border-radius: 2px;
+}

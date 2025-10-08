@@ -15,26 +15,21 @@ import { RouterModule } from '@angular/router';
 })
 export class LoginComponent implements OnInit {
 
-  credentials: LoginRequest = {
+ credentials: LoginRequest = {
     email: '',
     password: ''
   };
 
-  loginForm: FormGroup;   // 👈 aquí declaras la propiedad
+  loginForm: FormGroup;
   mensaje: string = '';
-
-  
   isLoading = false;
   errorMessage = '';
-
-
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router
   ) {
-    // inicializas el formulario
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]]
@@ -43,33 +38,53 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {}
 
-  
+  onLogin(): void {
+    if (this.loginForm.invalid) return;
 
+    this.isLoading = true;
+    this.mensaje = '';
+    this.errorMessage = '';
 
-onLogin(): void {
-  if (this.loginForm.invalid) return;
-
-  this.authService.login(this.loginForm.value).subscribe({
-    next: (res) => {
-      console.log('Respuesta login:', res); // para debug
-      if (res.rol === 'admin') {
-        this.router.navigate(['/admin/plantillas']);   // admin
-      } else {
-        this.router.navigate(['/']);               // usuario normal
+    this.authService.login(this.loginForm.value).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        console.log('Respuesta login:', res);
+        
+        // ✅ CORREGIDO: Acceder al rol a través de usuario.rol
+        if (res.usuario.rol === 'ADMIN') { // ← Cambiado de 'admin' a 'ADMIN' (mayúsculas)
+          this.router.navigate(['/admin/plantillas']);
+        } else {
+          this.router.navigate(['/usuario/descripcion-proyect']);
+        }
+      },
+      error: (err) => {
+        this.isLoading = false;
+        console.error('Error en login', err);
+        
+        // Manejo mejorado de errores
+        if (err.status === 401) {
+          this.errorMessage = 'Credenciales inválidas';
+        } else if (err.status === 0) {
+          this.errorMessage = 'Error de conexión con el servidor';
+        } else {
+          this.errorMessage = err.error?.message || 'Error en el login';
+        }
       }
-    },
-    error: (err) => {
-      console.error('Error en login', err);
-      this.mensaje = 'Credenciales inválidas';
-    }
-  });
+    });
+  }
+
+  // Métodos de conveniencia para acceder a los controles del formulario
+  get email() {
+    return this.loginForm.get('email');
+  }
+
+  get password() {
+    return this.loginForm.get('password');
+  }
 }
 
 
 
-
-
-}
 
 
 

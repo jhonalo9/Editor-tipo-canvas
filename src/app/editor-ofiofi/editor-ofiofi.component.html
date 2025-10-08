@@ -1,0 +1,133 @@
+<!-- plantilla-design-editor.component.html -->
+<div class="design-editor-container">
+  <!-- Barra de herramientas -->
+  <div class="toolbar">
+    <div class="toolbar-section">
+      <h4>Elementos</h4>
+      <div class="tool-grid">
+        <button *ngFor="let herramienta of herramientas"
+                class="tool-btn"
+                (click)="agregarElemento(herramienta.tipo)"
+                [title]="herramienta.nombre">
+          <span class="tool-icon">{{herramienta.icono}}</span>
+          <span class="tool-name">{{herramienta.nombre}}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-section">
+      <h4>Configuración Global</h4>
+      <div class="config-grid">
+        <div class="config-item">
+          <label>Tipo de Línea:</label>
+          <select [(ngModel)]="plantillaActual.configuracion.tipoLinea"
+                  (change)="actualizarConfiguracion()">
+            <option *ngFor="let tipo of tiposLinea" [value]="tipo.valor">
+              {{tipo.nombre}}
+            </option>
+          </select>
+        </div>
+
+        <div class="config-item">
+          <label>Espaciado:</label>
+          <input type="range" min="50" max="300" 
+                 [(ngModel)]="plantillaActual.configuracion.espaciado"
+                 (change)="actualizarConfiguracion()">
+          <span>{{plantillaActual.configuracion.espaciado}}px</span>
+        </div>
+
+        <div class="config-item">
+          <label>
+            <input type="checkbox" 
+                   [(ngModel)]="plantillaActual.configuracion.mostrarLineaTiempo"
+                   (change)="actualizarConfiguracion()">
+            Mostrar Línea
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <button class="btn btn-primary" (click)="guardarPlantilla()">
+        💾 Guardar Plantilla
+      </button>
+      <button class="btn btn-secondary" (click)="limpiarEditor()">
+        🗑️ Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- Área de diseño -->
+  <div class="design-area">
+    <div #container class="konva-container"></div>
+  </div>
+
+  <!-- Modal de Configuración -->
+  <div *ngIf="showModalConfiguracion" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Configurar Elemento</h3>
+        <button class="close-btn" (click)="cerrarModalConfiguracion()">×</button>
+      </div>
+
+      <div class="modal-body" *ngIf="elementoAConfigurar">
+        <!-- Configuración para contenedores -->
+        <div *ngIf="elementoAConfigurar.esContenedor" class="config-section">
+          <h4>Forma del Contenedor</h4>
+          <div class="shape-grid">
+            <button *ngFor="let forma of formasContenedor"
+                    class="shape-btn"
+                    [class.active]="elementoAConfigurar.configuracionContenedor?.forma === forma.valor"
+             (click)="actualizarFormaContenedor($any(forma.valor))">
+              <span class="shape-icon">{{forma.icono}}</span>
+              <span class="shape-name">{{forma.nombre}}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Configuración de estilos -->
+        <div class="config-section">
+          <h4>Estilos</h4>
+          <div class="style-grid">
+            <div class="style-item">
+              <label>Color de Fondo:</label>
+              <input type="color" 
+                     [value]="elementoAConfigurar.estilos.backgroundColor || '#ffffff'"
+                     (change)="actualizarColorFondo($any($event.target).value)">
+            </div>
+
+            <div class="style-item">
+              <label>Color de Borde:</label>
+              <input type="color" 
+                     [value]="elementoAConfigurar.estilos.border || '#3498db'"
+                     (change)="actualizarColorBorde($any($event.target).value)">
+            </div>
+
+            <div class="style-item" *ngIf="elementoAConfigurar.tipo === 'titulo'">
+              <label>Tamaño de Fuente:</label>
+              <input type="range" min="8" max="32"
+                     [value]="elementoAConfigurar.estilos.fontSize || 16"
+                     (change)="elementoAConfigurar.estilos.fontSize = $any($event.target).valueAsNumber">
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuración de contenido -->
+        <div class="config-section" *ngIf="elementoAConfigurar.contenido !== undefined">
+          <h4>Contenido</h4>
+          <textarea [(ngModel)]="elementoAConfigurar.contenido"
+                    placeholder="Texto del elemento..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="cerrarModalConfiguracion()">
+          Aplicar
+        </button>
+        <button class="btn btn-secondary" (click)="cerrarModalConfiguracion()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

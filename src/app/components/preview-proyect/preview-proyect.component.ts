@@ -28,8 +28,10 @@ export class PreviewProyectComponent {
         descripcion: this.descripcion
       });
       
-      this.router.navigate(['usuario/proyecto']);
+      
     }
+
+    this.router.navigate(['editor']);
   }
 
 }

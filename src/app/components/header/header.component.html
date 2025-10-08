@@ -7,6 +7,12 @@
 
   <nav class="nav">
     <!-- Cuando el usuario NO está logueado -->
+     <div class="nav-links">
+     <a *ngIf="isLoggedIn" routerLink="/" class="nav-link">Inicio</a>
+     <a *ngIf="isLoggedIn" routerLink="/plan" class="nav-link">Plan</a>
+     <a *ngIf="isLoggedIn" routerLink="/plantillas" class="nav-link">Plantillas</a>
+     <a *ngIf="isLoggedIn" routerLink="/usuario/mis-proyectos" class="nav-link">Mis Proyectos</a>
+    </div>
     <div *ngIf="!isLoggedIn" class="auth-buttons">
       <button class="btn-secondary" routerLink="/login">Iniciar Sesión</button>
       <button class="btn-register" routerLink="/register">Regístrate</button>
@@ -19,7 +25,7 @@
       <i class="fas fa-user-circle"></i> Mi Cuenta <i class="fas fa-caret-down"></i>
     </button>
     <ul class="dropdown-menu" *ngIf="isMenuOpen">
-      <li><a routerLink="/mis-proyectos"><i class="fas fa-folder-open"></i> Mis Proyectos</a></li>
+      <li><a routerLink="/usuario/mis-proyectos"><i class="fas fa-folder-open"></i> Mis Proyectos</a></li>
       <li><a (click)="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
     </ul>
   </div>

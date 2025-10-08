@@ -1,0 +1,645 @@
+<!-- unified-editor.component.html -->
+<div class="unified-editor-container">
+  <!-- Header principal moderno -->
+  <header class="editor-header">
+    <div class="header-content">
+      <div class="header-title">
+        <div class="title-icon">🎨</div>
+        <div class="title-text">
+          <h1>Editor de Plantillas</h1>
+          <p class="subtitle">Diseña plantillas profesionales para líneas de tiempo</p>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <button class="btn-save" (click)="guardarPlantilla()">
+          <i class="icon-save"></i>
+          Guardar Plantilla
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="editor-main">
+    <!-- Panel lateral de herramientas -->
+    <aside class="sidebar">
+      <!-- Información de la plantilla -->
+      <section class="sidebar-section info-section">
+        <h3 class="section-title">
+          <i class="icon-info"></i>
+          Información
+        </h3>
+        <div class="info-form">
+          <div class="form-group">
+            <label class="form-label">Nombre de la Plantilla</label>
+            <input type="text" 
+                   class="form-input"
+                   [(ngModel)]="plantillaNombre" 
+                   placeholder="Mi diseño personalizado">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <select class="form-select" [(ngModel)]="plantillaCategoria">
+              <option *ngFor="let cat of categorias" [value]="cat">{{cat}}</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-textarea" 
+                      [(ngModel)]="plantillaDescripcion" 
+                      rows="2"
+                      placeholder="Describe el propósito de esta plantilla..."></textarea>
+          </div>
+        </div>
+      </section>
+      <section class="sidebar-section groups-section" *ngIf="gruposHorizontales.length > 0">
+  <h3 class="section-title">
+    <i class="icon-groups"></i>
+    Grupos por Evento
+  </h3>
+
+  <div class="groups-list">
+    <div *ngFor="let grupo of gruposHorizontales" 
+         class="group-item"
+         [class.active]="grupo.id === grupoSeleccionado?.id">
+      
+      <div class="group-header" (click)="seleccionarGrupo(grupo)">
+        <div class="group-info">
+          <span class="group-name">Evento {{ getEventoDeGrupo(grupo)?.numero }}</span>
+          <span class="group-stats">{{ grupo.elementoIds.length }} contenedores</span>
+        </div>
+        
+        <div class="group-actions">
+          <button class="btn-delete-small" 
+                  (click)="$event.stopPropagation(); desagruparContenedores(grupo.id)"
+                  title="Desagrupar">
+            <i class="icon-ungroup">⊘</i>
+          </button>
+        </div>
+      </div>
+
+      <div class="group-controls" *ngIf="grupo.id === grupoSeleccionado?.id">
+        <div class="move-controls">
+          <label>Mover Grupo:</label>
+          <div class="move-buttons">
+            <button class="btn-move" (click)="moverGrupoHorizontal(-50)" title="Mover 50px izquierda">
+              ← 50px
+            </button>
+            <button class="btn-move" (click)="moverGrupoHorizontal(50)" title="Mover 50px derecha">
+              50px →
+            </button>
+          </div>
+          <div class="move-buttons">
+            <button class="btn-move" (click)="moverGrupoHorizontal(-10)" title="Mover 10px izquierda">
+              ← 10px
+            </button>
+            <button class="btn-move" (click)="moverGrupoHorizontal(10)" title="Mover 10px derecha">
+              10px →
+            </button>
+          </div>
+        </div>
+        
+        <div class="group-position">
+          <span>Posición X: {{ grupo.posicionX | number:'1.0-0' }}px</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="groups-help" *ngIf="grupoSeleccionado">
+    <p class="help-text">
+      💡 <strong>Grupo seleccionado:</strong> Mueve todos los contenedores del Evento {{ getEventoDeGrupo(grupoSeleccionado)?.numero }} simultáneamente
+    </p>
+  </div>
+</section>
+
+      <!-- Paleta de colores -->
+      <section class="sidebar-section">
+        <h3 class="section-title">
+          <i class="icon-palette"></i>
+          Color de Fondo
+        </h3>
+        <div class="color-grid">
+          <div *ngFor="let color of backgroundColors"
+               class="color-item"
+               [style.background]="color"
+               [class.active]="backgroundColor === color"
+               (click)="actualizarFondo(color)"
+               [title]="color">
+            <div class="color-check" *ngIf="backgroundColor === color">✓</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="config-group">
+  <label>Tipo de Línea:</label>
+  <select [(ngModel)]="plantillaActual.configuracion.tipoLinea" 
+          (change)="actualizarConfiguracion()">
+    <option value="recta">Recta</option>
+    <option value="curva">Curva</option>
+    <option value="vertical">Vertical</option>
+    <option value="horizontal">Horizontal</option>
+    <option value="escalonada">Escalonada</option>
+  </select>
+</div>
+
+<!-- También agrega un control para mostrar/ocultar la línea -->
+<div class="config-group">
+  <label>
+    <input type="checkbox" 
+           [(ngModel)]="plantillaActual.configuracion.mostrarLineaTiempo"
+           (change)="actualizarConfiguracion()">
+    Mostrar Línea de Tiempo
+  </label>
+</div>
+      </section>
+
+      <!-- Panel de Eventos -->
+<section class="sidebar-section events-section">
+  <h3 class="section-title">
+    <i class="icon-events"></i>
+    Gestión de Eventos
+  </h3>
+  
+  <div class="events-controls">
+    <button class="btn-create-event" (click)="crearNuevoEvento()">
+      <i class="icon-add"></i>
+      Nuevo Evento
+    </button>
+  </div>
+
+  <div class="events-list">
+    <div *ngFor="let evento of eventosDisponibles" 
+         class="event-item"
+         [class.active]="evento.id === eventoSeleccionado?.id">
+      
+      <div class="event-header" (click)="seleccionarEvento(evento)">
+        <div class="event-info">
+          <span class="event-number">Evento {{evento.numero}}</span>
+          <span class="event-containers">{{evento.contenedores.length}} contenedores</span>
+        </div>
+        
+        <div class="event-actions" *ngIf="evento.contenedores.length === 0">
+          <button class="btn-delete-small" 
+                  (click)="$event.stopPropagation(); eliminarEvento(evento)"
+                  title="Eliminar evento">
+            <i class="icon-delete"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="event-preview" *ngIf="evento.id === eventoSeleccionado?.id">
+        <div class="event-status">
+          <span>Evento activo para nuevos contenedores</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="current-event-info" *ngIf="eventoSeleccionado">
+    <div class="current-event-badge">
+      <strong>Evento Actual: {{eventoSeleccionado.numero}}</strong>
+      <span>{{eventoSeleccionado.contenedores.length}} contenedores</span>
+    </div>
+  </div>
+</section>
+
+      <!-- Herramientas organizadas con acordeón -->
+      <section class="sidebar-section tools-section">
+        <div class="accordion">
+          <!-- Recursos Visuales -->
+          <div class="accordion-item">
+            <div class="accordion-header">
+              <i class="icon-shapes"></i>
+              <span>Recursos Visuales</span>
+              <i class="icon-chevron"></i>
+            </div>
+            <div class="accordion-content">
+              <div class="tools-grid compact">
+                <button *ngFor="let tool of herramientas.recursos" 
+                        class="tool-card"
+                        (click)="tool.tipo === 'contenedor' ? agregarElemento(tool.tipo, tool.forma) : agregarElemento(tool.tipo)"
+                        [title]="tool.nombre">
+                  <div class="tool-icon">{{ tool.icono }}</div>
+                  <span class="tool-label">{{ tool.nombre }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Datos de Línea -->
+          <div class="accordion-item">
+            <div class="accordion-header">
+              <i class="icon-timeline"></i>
+              <span>Datos de Línea</span>
+              <i class="icon-chevron"></i>
+            </div>
+            <div class="accordion-content">
+              <div class="tools-grid compact">
+                <button *ngFor="let tool of herramientas.datosLinea" 
+                        class="tool-card"
+                        (click)="agregarElemento(tool.tipo)"
+                        [title]="tool.nombre">
+                  <div class="tool-icon">{{ tool.icono }}</div>
+                  <span class="tool-label">{{ tool.nombre }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Datos de Evento -->
+          <div class="accordion-item">
+            <div class="accordion-header">
+              <i class="icon-events"></i>
+              <span>Datos de Evento</span>
+              <i class="icon-chevron"></i>
+            </div>
+            <div class="accordion-content">
+              <div class="tools-grid compact">
+                <button *ngFor="let tool of herramientas.datosEvento" 
+                        class="tool-card"
+                        (click)="agregarElemento(tool.tipo)"
+                        [title]="tool.nombre">
+                  <div class="tool-icon">{{ tool.icono }}</div>
+                  <span class="tool-label">{{ tool.nombre }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Propiedades del elemento seleccionado -->
+      <section class="sidebar-section properties-section" *ngIf="elementoSeleccionado">
+        <h3 class="section-title">
+          <i class="icon-properties"></i>
+          Propiedades
+          <span class="element-type">{{ elementoSeleccionado.tipo }}</span>
+        </h3>
+        <div class="properties-panel">
+          <div class="property-group" *ngIf="elementoSeleccionado.contenido !== undefined">
+            <label class="property-label">Contenido</label>
+            <input type="text" 
+                   class="property-input"
+                   [(ngModel)]="elementoSeleccionado.contenido"
+                   (change)="actualizarVistaElemento()"
+                   placeholder="Texto del elemento...">
+          </div>
+          
+          <div class="property-group" *ngIf="elementoSeleccionado.estilos?.color">
+            <label class="property-label">Color del texto</label>
+            <div class="color-input-group">
+              <input type="color" 
+                     class="property-color"
+                     [(ngModel)]="elementoSeleccionado.estilos.color"
+                     (change)="actualizarVistaElemento()">
+              <span class="color-value">{{ elementoSeleccionado.estilos.color }}</span>
+            </div>
+          </div>
+          
+          <div class="property-group" *ngIf="elementoSeleccionado.estilos?.fontSize">
+            <label class="property-label">Tamaño de fuente</label>
+            <div class="range-input-group">
+              <input type="range" 
+                     class="property-range"
+                     [(ngModel)]="elementoSeleccionado.estilos.fontSize"
+                     (change)="actualizarVistaElemento()"
+                     min="8" max="72" step="1">
+              <span class="range-value">{{ elementoSeleccionado.estilos.fontSize }}px</span>
+            </div>
+          </div>
+
+          <div class="property-actions">
+            <button class="btn-danger" (click)="eliminarElementoSeleccionado()">
+              <i class="icon-delete"></i>
+              Eliminar Elemento
+            </button>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Área principal de trabajo -->
+    <main class="workspace">
+      <div class="workspace-header">
+        <div class="workspace-info">
+          <h2>Área de Diseño</h2>
+          <p class="workspace-stats">
+            {{ plantillaActual.configuracion.elementos.length }} elementos • 
+            {{ eventosGlobales.length }} eventos
+          </p>
+        </div>
+        <div class="workspace-controls">
+          <button class="btn-clear" (click)="limpiarEditor()">
+            <i class="icon-clear"></i>
+            Limpiar Todo
+          </button>
+          <div class="zoom-controls">
+            <button class="btn-zoom" (click)="zoomOut()" title="Alejar">
+              <i class="icon-zoom-out"></i>
+            </button>
+            <span class="zoom-level">{{ (escalaActual * 100) | number:'1.0-0' }}%</span>
+            <button class="btn-zoom" (click)="zoomIn()" title="Acercar">
+              <i class="icon-zoom-in"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <div #container id="konva-container" class="design-canvas"></div>
+        <div class="canvas-overlay" *ngIf="plantillaActual.configuracion.elementos.length === 0">
+          <div class="empty-state">
+            <div class="empty-icon">🎨</div>
+            <h3>Comienza a diseñar</h3>
+            <p>Selecciona elementos del panel lateral para crear tu plantilla</p>
+            <div class="empty-actions">
+              <button class="btn-primary" (click)="agregarElemento('contenedor', 'rectangulo')">
+                <i class="icon-add"></i>
+                Crear primer contenedor
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Panel de plantillas guardadas -->
+    <aside class="templates-sidebar">
+      <div class="templates-header">
+        <h3>
+          <i class="icon-templates"></i>
+          Plantillas Guardadas
+        </h3>
+        <button class="btn-refresh" (click)="cargarPlantillasGuardadas()" title="Actualizar">
+          <i class="icon-refresh"></i>
+        </button>
+      </div>
+
+      <div class="templates-list">
+        <div *ngFor="let plantilla of plantillasGuardadas" 
+             class="template-item"
+             [class.active]="plantilla.id === plantillaActual.id">
+          <div class="template-preview" 
+               [style.backgroundImage]="'url(' + plantilla.thumbnail + ')'">
+            <div class="template-overlay">
+              <button class="btn-preview" (click)="previsualizarPlantilla(plantilla)" title="Previsualizar">
+                <i class="icon-preview"></i>
+              </button>
+              <button class="btn-export" (click)="exportarPlantillaJSON(plantilla)" title="Exportar">
+                <i class="icon-export"></i>
+              </button>
+              <button class="btn-delete" (click)="eliminarPlantilla(plantilla)" title="Eliminar">
+                <i class="icon-delete"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="template-info">
+            <h4 class="template-name">{{ plantilla.nombre }}</h4>
+            <p class="template-category">{{ plantilla.categoria }}</p>
+            <p class="template-description">{{ plantilla.descripcion }}</p>
+            <div class="template-meta">
+              <span class="template-date">{{ plantilla.fechaCreacion | date:'shortDate' }}</span>
+              <span class="template-elements">{{ plantilla.configuracion.elementos.length }} elementos</span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="plantillasGuardadas.length === 0" class="templates-empty">
+          <div class="empty-icon">📁</div>
+          <h4>No hay plantillas guardadas</h4>
+          <p>Crea y guarda tu primera plantilla</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Modal de configuración moderno -->
+<div class="modal-overlay" *ngIf="showModalConfiguracion && elementoAConfigurar" 
+     [class.show]="showModalConfiguracion">
+  <div class="modal-container">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="icon-config"></i>
+        <h2>Configurar {{elementoAConfigurar.esContenedor ? 'Contenedor' : 'Elemento'}}</h2>
+      </div>
+      <button class="modal-close" (click)="cerrarModalConfiguracion()">
+        <i class="icon-close"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Navegación por pestañas -->
+      <div class="modal-tabs">
+        <button class="tab-button" 
+          [class.active]="esTabActiva('general')" 
+          (click)="cambiarTab('general')">
+          General
+        </button>
+        
+        <button class="tab-button" 
+                [class.active]="esTabActiva('estilos')" 
+                (click)="cambiarTab('estilos')"
+                *ngIf="!elementoAConfigurar?.esContenedor">
+          Estilos
+        </button>
+        
+        <button class="tab-button" 
+                [class.active]="esTabActiva('evento')" 
+                (click)="cambiarTab('evento')"
+                *ngIf="elementoAConfigurar?.esContenedor">
+          Evento
+        </button>
+        
+        <button class="tab-button" 
+                [class.active]="esTabActiva('elementos')" 
+                (click)="cambiarTab('elementos')"
+                *ngIf="elementoAConfigurar?.esContenedor">
+          Elementos Internos
+        </button>
+      </div>
+
+      <div class="tab-content">
+        <!-- Pestaña General -->
+  <div class="tab-pane" [class.active]="esTabActiva('general')">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Contenido</label>
+        <textarea class="form-textarea large"
+                  [(ngModel)]="elementoAConfigurar.contenido"
+                  (change)="actualizarVistaElemento()"
+                  rows="4"
+                  placeholder="Ingrese el contenido del elemento..."></textarea>
+      </div>
+
+      <div class="form-group" *ngIf="elementoAConfigurar.esContenedor">
+        <label class="form-label">Forma del Contenedor</label>
+        <div class="shape-selector">
+          <div *ngFor="let forma of formasDisponibles" 
+               class="shape-option"
+               [class.active]="elementoAConfigurar.configuracionContenedor?.forma === forma.id"
+               (click)="cambiarFormaContenedor(forma.id)">
+            <div class="shape-preview" [class]="'shape-' + forma.id">
+              {{ forma.icono }}
+            </div>
+            <span class="shape-name">{{ forma.nombre }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+        <!-- Pestaña Estilos -->
+        <div class="tab-pane" [class.active]="esTabActiva('estilos')" *ngIf="!elementoAConfigurar?.esContenedor">
+    <div class="style-controls">
+      <div class="style-group">
+        <label class="style-label">Color del Texto</label>
+        <input type="color" 
+               class="style-color"
+               [(ngModel)]="elementoAConfigurar.estilos.color"
+               (change)="actualizarVistaElemento()">
+      </div>
+      
+      <div class="style-group">
+        <label class="style-label">Tamaño de Fuente</label>
+        <div class="style-range">
+          <input type="range" 
+                 class="style-slider"
+                 [(ngModel)]="elementoAConfigurar.estilos.fontSize"
+                 (change)="actualizarVistaElemento()"
+                 min="8" max="72">
+          <span class="style-value">{{ elementoAConfigurar.estilos.fontSize }}px</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+        <!-- Pestaña Evento Mejorada -->
+ <div class="tab-pane" [class.active]="esTabActiva('evento')" *ngIf="elementoAConfigurar?.esContenedor">
+    <div class="event-config">
+      <div class="event-current">
+        <label class="config-label">Evento Actual Asignado</label>
+        <div class="current-event-display">
+          <div class="event-badge large">
+            <span class="event-number">Evento {{ elementoAConfigurar.datosEvento?.eventoNumero }}</span>
+            <span class="event-stats">
+              {{ getEventoActual()?.contenedores?.length || 0 }} contenedores en este evento
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-selector">
+        <label class="config-label">Cambiar a otro Evento</label>
+        <div class="event-options">
+          <div *ngFor="let evento of eventosDisponibles" 
+               class="event-option"
+               [class.active]="evento.id === elementoAConfigurar.eventoAsignadoId"
+               (click)="cambiarContenedorAEvento(evento.id)">
+            
+            <div class="event-option-content">
+              <span class="event-option-number">Evento {{evento.numero}}</span>
+              <span class="event-option-count">
+                {{evento.contenedores!.length || 0}} contenedor(es)
+              </span>
+            </div>
+            
+            <div class="event-option-check" *ngIf="evento.id === elementoAConfigurar.eventoAsignadoId">
+              ✓
+            </div>
+          </div>
+          
+          <div class="event-option new" 
+               (click)="crearNuevoEvento(); cambiarContenedorAEvento(eventosDisponibles[eventosDisponibles.length-1]!.id)">
+            <div class="event-option-content">
+              <span class="event-option-icon">+</span>
+              <span>Crear Nuevo Evento</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+       <!-- Pestaña Elementos Internos -->
+  <div class="tab-pane" [class.active]="esTabActiva('elementos')" *ngIf="elementoAConfigurar?.esContenedor">
+    <div class="elements-management">
+      <div class="elements-header">
+        <h4>Elementos del Evento</h4>
+        <div class="elements-count">
+          {{ getElementosEventoActual()!.length || 0 }} / {{ elementoAConfigurar.configuracionContenedor?.maxElementos || 5 }}
+        </div>
+      </div>
+
+      <div class="elements-list">
+        <div *ngFor="let elemento of getElementosEventoActual(); let i = index" 
+             class="element-item">
+          <div class="element-info">
+            <span class="element-icon">{{ getIconoElemento(elemento.tipo) }}</span>
+            <div class="element-details">
+              <span class="element-name">{{ elemento.tipo }}</span>
+              <span class="element-content">{{ elemento.contenido }}</span>
+            </div>
+          </div>
+          <button class="element-remove" (click)="removerElementoDeContenedor(i)">
+            <i class="icon-remove">×</i>
+          </button>
+        </div>
+
+        <div *ngIf="getElementosEventoActual()?.length === 0" class="elements-empty">
+          <i class="icon-empty">📝</i>
+          <p>No hay elementos en este contenedor</p>
+        </div>
+      </div>
+
+      <div class="elements-add" *ngIf="getElementosDisponiblesParaEventoActual()!.length > 0">
+  <label class="add-label">Agregar Elemento</label>
+  <div class="add-controls">
+    <select class="add-select" [(ngModel)]="elementoTipoSeleccionado">
+      <option value="">Seleccionar tipo...</option>
+      <option *ngFor="let elem of getElementosDisponiblesParaEventoActual()" 
+              [value]="elem.tipo">
+        {{ elem.icono }} {{ elem.nombre }}
+      </option>
+    </select>
+    <button class="add-button" 
+            (click)="agregarElementoSeleccionado()"
+            [disabled]="!elementoTipoSeleccionado">
+      <i class="icon-add">+</i>
+      Agregar
+    </button>
+  </div>
+</div>
+
+      <div *ngIf="getElementosDisponiblesParaEventoActual()?.length === 0" 
+           class="elements-full">
+        <div class="full-message">
+          <i class="icon-success">✓</i>
+          <span>Todos los elementos disponibles están en uso</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <div class="modal-footer">
+      <div class="footer-actions">
+        <button class="btn-secondary" (click)="cancelarCreacionContenedor()">
+          <i class="icon-cancel"></i>
+          Cancelar
+        </button>
+        <button class="btn-primary" (click)="aplicarYCrearContenedor()">
+          <i class="icon-confirm"></i>
+          {{esNuevoContenedor ? 'Crear Contenedor' : 'Aplicar Cambios'}}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

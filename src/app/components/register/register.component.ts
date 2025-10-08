@@ -15,7 +15,7 @@ import { RouterModule } from '@angular/router';
   ],
 })
 export class RegisterComponent {
- userData: RegisterRequest = {
+  userData: RegisterRequest = {
     nombre: '',
     email: '',
     password: ''
@@ -23,6 +23,7 @@ export class RegisterComponent {
   confirmPassword = '';
   isLoading = false;
   errorMessage = '';
+  successMessage = '';
 
   constructor(
     private authService: AuthService,
@@ -48,32 +49,26 @@ export class RegisterComponent {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.successMessage = '';
 
     this.authService.register(this.userData).subscribe({
       next: (response) => {
         this.isLoading = false;
+        this.successMessage = '¡Registro exitoso! Redirigiendo...';
         
-        // Auto-login después del registro exitoso
-        const loginCredentials: LoginRequest = {
-          email: this.userData.email,
-          password: this.userData.password
-        };
+        console.log('Registro exitoso:', response);
         
-        this.authService.login(loginCredentials).subscribe({
-          next: (loginResponse) => {
-            // Redirigir según el rol
-            if (loginResponse.rol === 'admin') {
-              this.router.navigate(['/admin/plantillas']);
-            } else {
-              this.router.navigate(['/usuario/descripcion-proyect']);
-            }
-          },
-          error: (loginError) => {
-            console.error('Error en login automático:', loginError);
-            // Si falla el login, redirigir al login manual
-            this.router.navigate(['/login']);
+        // ✅ CORREGIDO: No necesitas hacer login automático porque el register ya te autentica
+        // El servicio AuthService ya guarda el token y usuario en localStorage
+        
+        // Redirigir según el rol del usuario registrado
+        setTimeout(() => {
+          if (response.usuario.rol === 'ADMIN') { // ← Cambiado a 'ADMIN' en mayúsculas
+            this.router.navigate(['/admin/plantillas']);
+          } else {
+            this.router.navigate(['/usuario/descripcion-proyect']);
           }
-        });
+        }, 1500);
       },
       error: (error) => {
         this.isLoading = false;
@@ -96,5 +91,11 @@ export class RegisterComponent {
   registerWithGoogle(): void {
     // Implementar lógica de Google OAuth aquí
     console.log('Registrarse con Google');
+  }
+
+  // Limpiar mensajes cuando el usuario empiece a escribir
+  clearMessages(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
   }
 }

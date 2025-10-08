@@ -1,0 +1,337 @@
+<!-- plantilla-design-editor.component.html -->
+<div class="design-editor">
+  <div class="editor-header">
+    <h2>Editor de Plantillas de Línea de Tiempo</h2>
+    
+    <div class="editor-controls">
+      <input [(ngModel)]="plantillaActual.nombre" placeholder="Nombre de la plantilla">
+      <input [(ngModel)]="plantillaActual.descripcion" placeholder="Descripción">
+      
+      <select [(ngModel)]="plantillaActual.categoria">
+        <option value="historica">Histórica</option>
+        <option value="proyecto">Proyecto</option>
+        <option value="biografia">Biografía</option>
+        <option value="personalizado">Personalizado</option>
+      </select>
+
+      <button (click)="guardarPlantilla()" class="btn-primary">💾 Guardar Plantilla</button>
+      <button (click)="modo = modo === 'diseño' ? 'preview' : 'diseño'" class="btn-secondary">
+        {{ modo === 'diseño' ? '👁️ Vista Previa' : '✏️ Modo Diseño' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-container">
+    <!-- Panel de herramientas -->
+    <div class="tools-panel">
+       <h3>📦 Elementos de la Línea de Tiempo</h3>
+  
+  <!-- Grupo 1: Recursos -->
+  <div class="tool-group">
+    <h4 class="group-title">🎨 Recursos Visuales</h4>
+    <div class="tools-grid">
+      <button *ngFor="let tool of herramientas.recursos" 
+              (click)="tool.tipo === 'contenedor' ? agregarElemento(tool.tipo, tool.forma) : agregarElemento(tool.tipo)"
+              class="tool-btn"
+              [title]="tool.nombre">
+        <span class="tool-icon">{{ tool.icono }}</span>
+        <span class="tool-name">{{ tool.nombre }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grupo 2: Datos de Línea -->
+  <div class="tool-group">
+    <h4 class="group-title">📊 Datos de la Línea</h4>
+    <div class="tools-grid">
+      <button *ngFor="let tool of herramientas.datosLinea" 
+              (click)="agregarElemento(tool.tipo)"
+              class="tool-btn"
+              [title]="tool.nombre">
+        <span class="tool-icon">{{ tool.icono }}</span>
+        <span class="tool-name">{{ tool.nombre }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grupo 3: Datos de Evento -->
+  <div class="tool-group">
+    <h4 class="group-title">🎯 Datos de Evento</h4>
+    <div class="tools-grid">
+      <button *ngFor="let tool of herramientas.datosEvento" 
+              (click)="agregarElemento(tool.tipo)"
+              class="tool-btn"
+              [title]="tool.nombre">
+        <span class="tool-icon">{{ tool.icono }}</span>
+        <span class="tool-name">{{ tool.nombre }}</span>
+      </button>
+    </div>
+  </div>
+
+      <!-- Panel de propiedades del elemento seleccionado -->
+      <div *ngIf="elementoSeleccionado" class="properties-panel">
+        <h4>Propiedades de {{ elementoSeleccionado.tipo }}</h4>
+        <!-- Aquí irían los controles para editar las propiedades -->
+         <div class="property-controls">
+      <div class="property-group" *ngIf="elementoSeleccionado.contenido !== undefined">
+        <label>Contenido:</label>
+        <input type="text" 
+               [(ngModel)]="elementoSeleccionado.contenido"
+               (change)="actualizarVistaElemento()">
+      </div>
+      
+      <div class="property-group" *ngIf="elementoSeleccionado.estilos?.color">
+        <label>Color:</label>
+        <input type="color" 
+               [(ngModel)]="elementoSeleccionado.estilos.color"
+               (change)="actualizarVistaElemento()">
+      </div>
+      
+      <div class="property-group" *ngIf="elementoSeleccionado.estilos?.fontSize">
+        <label>Tamaño de fuente:</label>
+        <input type="number" 
+               [(ngModel)]="elementoSeleccionado.estilos.fontSize"
+               (change)="actualizarVistaElemento()">
+      </div>
+    </div>
+
+
+
+
+      </div>
+
+      
+    </div>
+
+    <!-- Área de diseño -->
+    <div class="design-area">
+  <div class="canvas-controls">
+    <button (click)="zoomIn()" class="btn-zoom">🔍+</button>
+    <button (click)="zoomOut()" class="btn-zoom">🔍-</button>
+    <button (click)="resetZoom()" class="btn-zoom">↺</button>
+  </div>
+  <div #container class="konva-container"></div>
+</div>
+
+    <!-- Panel de configuración -->
+    <div class="config-panel">
+      <h3>Configuración</h3>
+      <div class="config-group">
+        <label>Tipo de Línea:</label>
+        <select [(ngModel)]="plantillaActual.configuracion.tipoLinea" 
+                (change)="actualizarConfiguracion()">
+          <option value="recta">Recta</option>
+          <option value="curva">Curva</option>
+          <option value="vertical">Vertical</option>
+          <option value="horizontal">Horizontal</option>
+          <option value="escalonada">Escalonada</option>
+        </select>
+      </div>
+
+      <div class="config-group">
+        <label>Orientación de Eventos:</label>
+        <select [(ngModel)]="plantillaActual.configuracion.orientacionEventos"
+                (change)="actualizarConfiguracion()">
+          <option value="alternada">Alternada</option>
+          <option value="unilateral">Unilateral</option>
+          <option value="central">Central</option>
+        </select>
+      </div>
+
+      <div class="config-group">
+        <label>
+          <input type="checkbox" 
+                 [(ngModel)]="plantillaActual.configuracion.mostrarLineaTiempo"
+                 (change)="actualizarConfiguracion()">
+          Mostrar línea de tiempo
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- En plantilla-design-editor-component.component.html -->
+<div class="modal-backdrop" *ngIf="showModalConfiguracion && elementoAConfigurar">
+  <div class="modal-configuracion">
+    <div class="modal-header">
+      <h3>Configurar Contenedor - {{elementoAConfigurar.contenido || 'Contenedor'}}</h3>
+      <button class="btn-cerrar" (click)="cerrarModalConfiguracion()">×</button>
+    </div>
+    
+    <div class="modal-body">
+    
+      <div class="config-section">
+        <h4>Asignar a Evento</h4>
+        
+        <div class="evento-selector">
+          <label>Evento actual: <strong>{{ getEventoActual()?.numero }}</strong></label>
+          
+          <div class="evento-botones">
+            <button *ngFor="let evento of getEventosDisponibles()" 
+                    class="btn-evento"
+                    [class.activo]="evento.id === eventoActualId"
+                    (click)="cambiarContenedorAEvento(evento.numero)">
+              {{ evento.numero }} ({{ evento.contenedores.length }} contenedores)
+            </button>
+            
+            <button class="btn-nuevo-evento" 
+                    (click)="cambiarContenedorAEvento(obtenerSiguienteNumeroEvento())">
+              + Nuevo Evento
+            </button>
+          </div>
+        </div>
+      </div>
+
+     
+      <div class="config-section">
+        <h4>Elementos Internos</h4>
+        
+        <div class="elementos-actuales">
+          <div *ngFor="let elemento of getElementosEventoActual(); let i = index" 
+               class="elemento-item">
+            <span class="elemento-icono">{{ getIconoElemento(elemento.tipo) }}</span>
+            <span class="elemento-nombre">{{ elemento.tipo }}</span>
+            <span class="elemento-contenido">{{ elemento.contenido }}</span>
+            <button class="btn-eliminar" (click)="removerElementoDeContenedor(i)">🗑️</button>
+          </div>
+          
+          <div *ngIf="getElementosEventoActual().length === 0" class="sin-elementos">
+            No hay elementos en este contenedor
+          </div>
+        </div>
+
+    
+        <div *ngIf="getElementosDisponiblesParaEventoActual().length > 0" class="agregar-elemento">
+          <select [(ngModel)]="elementoSeleccionadoModal">
+            <option value="">Seleccionar elemento</option>
+            <option *ngFor="let elem of getElementosDisponiblesParaEventoActual()" 
+                    [value]="elem.tipo">
+              {{ elem.icono }} {{ elem.nombre }}
+            </option>
+          </select>
+          <button class="btn-agregar" 
+                  (click)="agregarElementoAContenedor(elementoSeleccionadoModal)"
+                  [disabled]="!elementoSeleccionadoModal">
+            + Agregar
+          </button>
+        </div>
+
+        <div *ngIf="getElementosDisponiblesParaEventoActual().length === 0" 
+             class="todos-elementos-agregados">
+          ✅ Todos los elementos disponibles están siendo usados en este evento
+        </div>
+      </div>
+
+     
+      <div class="config-section">
+        <h4>Forma del Contenedor</h4>
+        <select [(ngModel)]="elementoAConfigurar.configuracionContenedor!.forma"
+                (change)="actualizarVistaElemento()">
+          <option value="rectangulo">Rectángulo</option>
+          <option value="circulo">Círculo</option>
+          <option value="rombo">Rombo</option>
+          <option value="estrella">Estrella</option>
+        </select>
+      </div>
+
+      
+      <div class="config-section">
+        <h4>Estilos del Contenedor</h4>
+        <div class="estilos-controls">
+          <label>Color de fondo:
+            <input type="color" 
+                   [(ngModel)]="elementoAConfigurar.estilos.backgroundColor"
+                   (change)="actualizarVistaElemento()">
+          </label>
+          <label>Color del borde:
+            <input type="color" 
+                   [(ngModel)]="elementoAConfigurar.estilos.border"
+                   (change)="actualizarVistaElemento()">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <ng-container *ngIf="esNuevoContenedor; else existente">
+        <button class="btn-secondary" (click)="cancelarCreacionContenedor()">Cancelar</button>
+        <button class="btn-primary" (click)="aplicarYCrearContenedor()">Aplicar y Crear</button>
+      </ng-container>
+      
+      <ng-template #existente>
+        <button class="btn-primary" (click)="cerrarModalConfiguracion()">Aplicar Cambios</button>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- Agrega esta sección en tu HTML -->
+<div class="selection-controls">
+  <h4>🖱️ Selección Múltiple</h4>
+  
+  <div class="selection-buttons">
+    <button (click)="seleccionarTodosLosContenedores()" class="btn-selection" title="Ctrl+A">
+      ☑️ Seleccionar Todos
+    </button>
+    <button (click)="limpiarSeleccion()" class="btn-selection" title="Escape">
+      🗑️ Limpiar Selección
+    </button>
+    <button (click)="copiarElementosSeleccionados()" 
+            class="btn-selection" 
+            [disabled]="elementosSeleccionados.size === 0"
+            title="Ctrl+C">
+      📋 Copiar ({{elementosSeleccionados.size}})
+    </button>
+    <button (click)="pegarElementosCopiados()" 
+            class="btn-selection" 
+            [disabled]="!hayElementosParaPegar()"
+            title="Ctrl+V">
+      📄 Pegar ({{getNumeroElementosPortapapeles()}})
+    </button>
+    <button (click)="eliminarElementosSeleccionados()" 
+            class="btn-selection btn-danger"
+            [disabled]="elementosSeleccionados.size === 0"
+            title="Delete">
+      🗑️ Eliminar ({{elementosSeleccionados.size}})
+    </button>
+  </div>
+  
+  <div class="selection-info" *ngIf="elementosSeleccionados.size > 0">
+    <strong>{{elementosSeleccionados.size}} elementos seleccionados</strong>
+  </div>
+  
+  <div class="keyboard-shortcuts">
+    <h5>Atajos de Teclado:</h5>
+    <div class="shortcuts-grid">
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>Click y Arrastrar</kbd>
+        <span>Seleccionar múltiples elementos</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>A</kbd>
+        <span>Seleccionar todos</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>C</kbd>
+        <span>Copiar selección</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd> + <kbd>V</kbd>
+        <span>Pegar</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Delete</kbd>
+        <span>Eliminar selección</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Escape</kbd>
+        <span>Limpiar selección</span>
+      </div>
+    </div>
+  </div>
+</div>

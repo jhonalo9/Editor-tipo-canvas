@@ -1,0 +1,190 @@
+<app-header></app-header>
+<div class="upgrade-container">
+  
+  <!-- Alertas personalizadas -->
+  <div *ngIf="mostrarMensaje" class="alert alert-{{tipoMensaje}}">
+    <span>{{mensaje}}</span>
+    <button class="close-btn" (click)="cerrarAlerta()">×</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Upgrade a Premium</h1>
+    <p>Desbloquea todas las funciones premium</p>
+  </div>
+
+  <!-- Progreso -->
+  <div class="progreso">
+    <div class="pasos">
+      <div *ngFor="let paso of pasos; let i = index" 
+           class="paso" 
+           [class.activo]="i === pasoActual"
+           [class.completado]="paso.completado">
+        <div class="circulo">{{ i + 1 }}</div>
+        <span class="titulo-paso">{{ paso.titulo }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 1: Resumen del Plan -->
+  <div *ngIf="pasoActual === 0" class="paso-contenido">
+    <div class="card plan-card">
+      <div class="card-header">
+        <div class="premium-icon">⭐</div>
+        <h2>Plan Premium</h2>
+        <p>Todo lo que necesitas para maximizar tu productividad</p>
+      </div>
+      
+      <div class="card-content">
+        <div class="beneficios">
+          <h3>Beneficios incluidos:</h3>
+          <ul>
+            <li>✅ Timeline ilimitado</li>
+            <li>✅ Proyectos ilimitados</li>
+            <li>✅ Exportación de datos</li>
+            <li>✅ Soporte prioritario</li>
+            <li>✅ Plantillas premium</li>
+            <li>✅ Colaboración en equipo</li>
+          </ul>
+        </div>
+        
+        <div class="precio">
+          <h2>$9.99 / mes</h2>
+          <p>o $99.99 / año (ahorra 20%)</p>
+        </div>
+
+        <div class="usuario-info" *ngIf="usuario">
+          <p><strong>Usuario actual:</strong> {{ usuario.nombre }}</p>
+          <p><strong>Plan actual:</strong> <span class="plan-badge">{{ usuario.plan }}</span></p>
+        </div>
+      </div>
+      
+      <div class="card-actions">
+        <button class="btn btn-primary" (click)="siguientePaso()">
+          Continuar con el Pago
+        </button>
+        <button class="btn btn-secondary" routerLink="/">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 2: Información de Pago -->
+  <div *ngIf="pasoActual === 1" class="paso-contenido">
+    <div class="card">
+      <div class="card-header">
+        <h2>Información de Pago</h2>
+        <p>Ingresa los datos de tu tarjeta de crédito</p>
+      </div>
+      
+      <div class="card-content">
+        <form class="formulario-pago">
+          <div class="form-group full-width">
+            <label>Número de Tarjeta</label>
+            <input type="text" 
+                   [(ngModel)]="datosPago.numeroTarjeta" 
+                   name="numeroTarjeta"
+                   (input)="formatearNumeroTarjeta($event)"
+                   placeholder="1234 5678 9012 3456"
+                   maxlength="19"
+                   required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha Expiración</label>
+              <input type="text" 
+                     [(ngModel)]="datosPago.fechaExpiracion" 
+                     name="fechaExpiracion"
+                     (input)="formatearFechaExpiracion($event)"
+                     placeholder="MM/YY"
+                     maxlength="5"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="password" 
+                     [(ngModel)]="datosPago.cvv" 
+                     name="cvv"
+                     maxlength="3"
+                     required>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Nombre del Titular</label>
+            <input type="text" 
+                   [(ngModel)]="datosPago.nombreTitular" 
+                   name="nombreTitular"
+                   required>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Email para facturación</label>
+            <input type="email" 
+                   [(ngModel)]="datosPago.email" 
+                   name="email"
+                   [value]="usuario?.email"
+                   required>
+          </div>
+
+          <div class="seguridad">
+            <span>🔒 Tu información está protegida con encriptación SSL</span>
+          </div>
+        </form>
+      </div>
+      
+      <div class="card-actions">
+        <button class="btn btn-primary" 
+                (click)="procesarPago()"
+                [disabled]="cargando">
+          <span *ngIf="!cargando">Pagar $9.99</span>
+          <span *ngIf="cargando">
+            <div class="spinner"></div>
+            Procesando...
+          </span>
+        </button>
+        <button class="btn btn-secondary" (click)="pasoAnterior()">
+          Atrás
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 3: Confirmación -->
+  <div *ngIf="pasoActual === 2" class="paso-contenido">
+    <div class="card confirmacion-card">
+      <div class="card-header">
+        <div class="icono-exito">🎉</div>
+        <h2>¡Upgrade Exitoso!</h2>
+        <p>Ahora eres un usuario Premium</p>
+      </div>
+      
+      <div class="card-content">
+        <div class="mensaje-exito">
+          <p>Tu cuenta ha sido actualizada exitosamente al plan Premium.</p>
+          <p>Ahora tienes acceso a todas las funciones exclusivas.</p>
+          
+          <div class="resumen" *ngIf="usuario">
+            <h4>Resumen de tu plan:</h4>
+            <p><strong>Usuario:</strong> {{ usuario.nombre }}</p>
+            <p><strong>Plan:</strong> <span class="plan-premium">Premium</span></p>
+            <p><strong>Pago:</strong> $9.99 / mes</p>
+            <p><strong>Próxima facturación:</strong> {{ today | date:'longDate' }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card-actions">
+        <button class="btn btn-primary" routerLink="/">
+          Ir Inicio
+        </button>
+        <!--<button class="btn btn-secondary" routerLink="/">
+          Ver Mi Perfil
+        </button>-->
+      </div>
+    </div>
+  </div>
+</div>

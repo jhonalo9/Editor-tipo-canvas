@@ -1,9 +1,9 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+/*import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { PlantillaService, PlantillaRequest, Plantilla } from '../../core/services/plantilla.service';
-import { EditorAdminComponent } from '../admin/editor-admin/editor-admin.component';
+//import { EditorAdminComponent } from '../admin/editor-admin/editor-admin.component';
 
 
 @Component({
@@ -164,8 +164,8 @@ export class AdminPlantillaComponent implements OnInit {
   }
 
   eliminarPlantilla(plantilla: Plantilla): void {
-    if (!plantilla.idPlantilla) {
-      console.error('ID inválido para eliminar:', plantilla.idPlantilla);
+    if (!plantilla.id) {
+      console.error('ID inválido para eliminar:', plantilla.id);
       this.mensaje = 'Error: ID de plantilla no válido';
       return;
     }
@@ -174,12 +174,12 @@ export class AdminPlantillaComponent implements OnInit {
       return;
     }
 
-    this.plantillaService.deletePlantilla(plantilla.idPlantilla).subscribe({
+    this.plantillaService.deletePlantilla(plantilla.id).subscribe({
       next: () => {
         this.mensaje = `Plantilla "${plantilla.nombre}" eliminada correctamente`;
         
         // Si la plantilla eliminada era la seleccionada, limpiar selección
-        if (this.plantillaSeleccionada && this.plantillaSeleccionada.idPlantilla === plantilla.idPlantilla) {
+        if (this.plantillaSeleccionada && this.plantillaSeleccionada.id === plantilla.id) {
           this.plantillaSeleccionada = null;
           this.plantillaForm.reset();
         }
@@ -208,4 +208,4 @@ export class AdminPlantillaComponent implements OnInit {
     this.cancelarEdicion();
     this.mensaje = 'Listo para crear una nueva plantilla';
   }
-}
+}*/
