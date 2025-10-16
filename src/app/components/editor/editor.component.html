@@ -190,6 +190,12 @@
     </div>
 
     <div class="form-group">
+      <label>Enlace:</label>
+      <input type="url" [(ngModel)]="editedEvent.link" placeholder="https://ejemplo.com">
+      <small class="help-text">URL opcional para más información</small>
+    </div>
+
+    <div class="form-group">
       <label>Imagen:</label>
       <input type="file" (change)="onEditImageSelected($event)" accept="image/*">
       <div *ngIf="editedEvent.image" class="image-preview">
@@ -250,6 +256,14 @@
         placeholder="Descripción del evento"
         rows="3"></textarea>
     </div>
+    <div class="form-group">
+      <label for="event-link">Enlace:</label>
+      <input 
+        type="url" 
+        id="event-link" 
+        [(ngModel)]="newEvent.link" 
+        placeholder="https://ejemplo.com (opcional)">
+    </div>
     
     <div class="form-group">
       <label for="event-image">Imagen:</label>
@@ -284,6 +298,56 @@
     <button (click)="showTemplateSelector = false" class="btn btn-secondary">
       Cancelar
     </button>
+  </div>
+</div>
+
+
+
+
+
+<!-- En editor.component.html -->
+<div class="section">
+  <h4>📏 Forma de Línea</h4>
+  <select (change)="changeTimelineDesign($event)" class="form-select">
+    <option value="">Seleccionar forma...</option>
+    <option *ngFor="let design of timelineDesigns" 
+            [value]="design.id"
+            [selected]="currentTimelineDesign.id === design.id">
+      {{design.name}}
+    </option>
+  </select>
+  
+  <!-- Información del diseño actual -->
+  <div *ngIf="currentTimelineDesign" class="timeline-info">
+    <small class="text-muted">
+      {{currentTimelineDesign.description}}
+      <br>
+      <strong>Tipo: {{getLayoutTypeName(currentTimelineDesign.layout.type)}}</strong>
+    </small>
+  </div>
+</div>
+
+
+
+<!-- En editor.component.html - Opción 1: Usando (change) con $event -->
+<div class="section">
+  <h4>🎨 Diseño de Eventos</h4>
+  <select (change)="changeEventDesign($event)" class="form-select">
+    <option value="">Seleccionar diseño...</option>
+    <option *ngFor="let design of eventDesigns" 
+            [value]="design.id"
+            [selected]="currentEventDesign.id === design.id">
+      {{design.name}}
+    </option>
+  </select>
+  
+  <!-- Información del diseño actual -->
+  <div *ngIf="currentEventDesign" class="design-info">
+    <small class="text-muted">
+      {{currentEventDesign.description}}
+      <br>
+      <strong>{{currentEventDesign.elements.length}} elementos</strong>
+    </small>
   </div>
 </div>
 
@@ -411,6 +475,28 @@
       </button>
     </div>
   </div>
+</div>
+
+
+
+
+
+
+
+<div class="section">
+  <h4>📁 Importar Plantilla</h4>
+  
+  <!-- Input oculto para seleccionar archivo -->
+  <input 
+    type="file" 
+    id="import-plantilla" 
+    accept=".json" 
+    (change)="importarPlantillaDesdeArchivo($event)"
+    style="display: none">
+  
+  <button class="btn-outline full" (click)="seleccionarArchivoPlantilla()">
+    <i class="fa-solid fa-file-import"></i> Importar Plantilla JSON
+  </button>
 </div>
 
 

@@ -11,6 +11,10 @@ import { ArchivoService } from '../../core/services/archivo.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { ActivatedRoute, Router } from '@angular/router'; 
+import { EventDesign, EventElement, EventStyles } from '../../core/models/event-design.interface';
+import { EventDesignService } from '../../core/services/event-design.service';
+import { MarkerStyle, TimelineDesign, TimelineLayout } from '../../core/models/timeline-design.interface';
+import { TimelineDesignService } from '../../core/services/timeline-design.service';
 
 // Agregar esta interfaz si no existe
 export interface TemplateStyles {
@@ -43,6 +47,8 @@ interface TimelineEvent {
   person: string;
   description: string;
   image?: string ;
+  link?: string;
+  zonaDesign?: any;
 }
 
 
@@ -75,6 +81,13 @@ export interface ProyectoExport {
 })
 export class EditorComponent implements OnInit {
   @ViewChild('container', { static: true }) container!: ElementRef;
+
+
+
+
+  public timelineDesigns: TimelineDesign[] = [];
+  public currentTimelineDesign: TimelineDesign;
+  public selectedTimelineDesignId: string = 'classic-line';
 
 
   showDesignTemplatesModal = false;
@@ -125,7 +138,8 @@ showSaveProjectModal: boolean = false;
     title: '',
     person: '',
     description: '',
-    image: ''
+    image: '',
+    link: ''
   };
   
   timelineEvents: TimelineEvent[] = [];
@@ -135,7 +149,8 @@ showSaveProjectModal: boolean = false;
     title: '',
     person: '',
     description: '',
-    image: ''
+    image: '',
+    link: ''
   };
 
   // Plantillas
@@ -144,6 +159,23 @@ showSaveProjectModal: boolean = false;
 
 
   
+// Propiedades de Zoom
+public zoomLevel: number = 100; // Zoom actual en porcentaje
+public minZoom: number = 25;    // Zoom mínimo
+public maxZoom: number = 400;   // Zoom máximo
+public zoomStep: number = 5;   // Incremento/decremento del zoom
+
+  
+
+// Propiedades de dimensiones del canvas
+public canvasWidth: number = 1200;
+public canvasHeight: number = 800;
+public isResizing: boolean = false;
+public resizeHandle: string = ''; // 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'
+public originalMouseX: number = 0;
+public originalMouseY: number = 0;
+public originalCanvasWidth: number = 0;
+public originalCanvasHeight: number = 0;
 
   containerSize: number = 90;
  isPresentacionMode: boolean = false;
@@ -231,6 +263,7 @@ togglePresentacion(): void {
   }
 
 
+public eventDesigns: EventDesign[] = [];
 
   // Configuración
   minYear: number = 1800;
@@ -240,17 +273,87 @@ togglePresentacion(): void {
     '#ffffff','#f9f9f9', '#f0f8ff', '#fffaf0', '#f5f5f5',
     '#e6f3ff', '#f0fff0', '#fff0f5', '#f8f8ff', '#fafad2'
   ];
+currentEventDesign!: EventDesign;
+  constructor(private templateService: TemplateService,
+    private route: ActivatedRoute,
+    private plantillaDesignService: PlantillaDesignService,
+    private router: Router   ,
+    private proyectoService: ProyectoService,
+    private authService: AuthService,
+    private archivoService: ArchivoService,
+    private eventDesignService: EventDesignService,
+    private timelineDesignService: TimelineDesignService
+   ) { this.currentEventDesign = this.eventDesignService.getEventDesignById('default-with-image')!;
+       const defaultDesign = this.timelineDesignService.getTimelineDesignById(this.selectedTimelineDesignId);
+    if (defaultDesign) {
+      this.currentTimelineDesign = defaultDesign;
+    } else {
+      // Fallback seguro
+      this.currentTimelineDesign = this.getDefaultTimelineDesign();
+    }
+   }
 
-  constructor(private templateService: TemplateService,private route: ActivatedRoute,private plantillaDesignService: PlantillaDesignService,private router: Router   ,private proyectoService: ProyectoService,private authService: AuthService,private archivoService: ArchivoService, ) {}
+   private getDefaultTimelineDesign(): TimelineDesign {
+  return {
+    id: 'default-timeline',
+    name: 'Línea por Defecto',
+    description: 'Diseño básico de línea de tiempo',
+    layout: {
+      type: 'horizontal',
+      orientation: 'center'
+    },
+    lineStyle: {
+      stroke: '#070707ff',
+      strokeWidth: 5,
+      strokeStyle: 'solid',
+      lineCap: 'round',
+      shadow: {
+        color: 'rgba(0,0,0,0.3)',
+        blur: 8,
+        offset: { x: 0, y: 3 },
+        opacity: 0.5
+      }
+    },
+    markers: [
+      {
+        type: 'year',
+        position: 'both',
+        interval: 10,
+        style: {
+          size: 4,
+          color: '#070707ff',
+          shape: 'line',
+          label: {
+            show: true,
+            fontSize: 12,
+            fontFamily: 'Arial',
+            color: '#2c3e50',
+            position: 'outside'
+          }
+        }
+      }
+    ]
+  };
+}
 
+
+
+ 
 
   ngOnInit(): void {
+    this.timelineDesigns = this.timelineDesignService.getTimelineDesigns();
+    this.eventDesigns = this.eventDesignService.getEventDesigns();
+
     this.initKonva();
     this.calculateYearRange();
     this.renderTimelineEvents();
     this.loadTemplates(); // Cargar plantillas al inicializar
     this.cargarPlantillasDiseno();
     this.crearElementosProyecto()
+
+    this.setupCanvasResize();
+    
+  this.setupMouseWheelZoom();
 
     this.route.queryParams.subscribe(params => {
     const proyectoId = params['proyecto'];
@@ -388,7 +491,7 @@ togglePresentacion(): void {
     textNode.setAttr('myTransformer', tr);
   }
 
-   iniciarEdicionTexto(textNode: Konva.Text, tipo: 'titulo' | 'descripcion'): void {
+   iniciarEdicionTexto(textNode: Konva.Text, tipo: 'titulo' | 'descripcion'|'personaje'): void {
     const stageBox = this.stage.container().getBoundingClientRect();
     const textPosition = textNode.absolutePosition();
     
@@ -1110,6 +1213,518 @@ private async procesarImagenesEventos(usuarioId: number, esProyectoNuevo: boolea
 }
 
 
+changeTimelineDesign(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const designId = selectElement.value;
+    
+    if (designId) {
+      const design = this.timelineDesignService.getTimelineDesignById(designId);
+      if (design) {
+        this.currentTimelineDesign = design;
+        this.selectedTimelineDesignId = designId;
+        this.renderTimelineBase(); // Re-dibujar la línea base
+        console.log('✅ Diseño de timeline cambiado a:', design.name);
+      }
+    }
+  }
+
+   renderTimelineBase(): void {
+  // ✅ ELIMINAR COMPLETAMENTE la línea base anterior y todos sus elementos
+  this.limpiarCompletamenteLineaTiempo();
+  
+  const layout = this.currentTimelineDesign.layout;
+
+  // Crear línea según el tipo de layout
+  switch (layout.type) {
+    case 'horizontal':
+      this.drawHorizontalTimeline();
+      break;
+    case 'vertical':
+      this.drawVerticalTimeline();
+      break;
+    case 'curve':
+      this.drawCurvedTimeline();
+      break;
+    case 'wave':
+      this.drawWaveTimeline();
+      break;
+    case 'zigzag':
+      this.drawZigzagTimeline();
+      break;
+    case 'spiral':
+      this.drawSpiralTimeline();
+      break;
+    case 's-curve': // ✅ NUEVO
+      this.drawSCurveTimeline();
+      break;
+    case 'custom': // ✅ NUEVO
+      this.drawCustomTimeline();
+      break;
+    default:
+      this.drawHorizontalTimeline(); // Fallback
+  }
+
+  // Dibujar marcadores según el layout
+  this.drawTimelineMarkers();
+
+  // Dibujar fondo si está configurado
+  this.drawTimelineBackground(this.getTimelineYPosition());
+
+  this.mainLayer.batchDraw();
+  
+  console.log(`🎨 Línea de tiempo renderizada: ${layout.type}`);
+}
+
+  private drawHorizontalTimeline(): void {
+  const y = this.getTimelineYPosition();
+  const lineStyle = this.currentTimelineDesign.lineStyle;
+
+  const timeline = new Konva.Line({
+    id: 'timeline-base', // ✅ MISMO ID para todas las líneas
+    points: [50, y, this.stage.width() - 50, y],
+    stroke: lineStyle.stroke,
+    strokeWidth: lineStyle.strokeWidth,
+    lineCap: lineStyle.lineCap as any,
+    dash: lineStyle.dashArray,
+    shadowColor: lineStyle.shadow?.color,
+    shadowBlur: lineStyle.shadow?.blur,
+    shadowOffset: lineStyle.shadow?.offset,
+    shadowOpacity: lineStyle.shadow?.opacity
+  });
+
+  this.mainLayer.add(timeline);
+}
+
+
+
+  private drawVerticalTimeline(): void {
+  const x = this.getTimelineXPosition();
+  const lineStyle = this.currentTimelineDesign.lineStyle;
+
+  const timeline = new Konva.Line({
+    id: 'timeline-base', // ✅ MISMO ID
+    points: [x, 100, x, this.stage.height() - 100],
+    stroke: lineStyle.stroke,
+    strokeWidth: lineStyle.strokeWidth,
+    lineCap: lineStyle.lineCap as any,
+    dash: lineStyle.dashArray,
+    shadowColor: lineStyle.shadow?.color,
+    shadowBlur: lineStyle.shadow?.blur,
+    shadowOffset: lineStyle.shadow?.offset,
+    shadowOpacity: lineStyle.shadow?.opacity
+  });
+
+  this.mainLayer.add(timeline);
+}
+
+
+  private drawCurvedTimeline(): void {
+    const layout = this.currentTimelineDesign.layout;
+    const lineStyle = this.currentTimelineDesign.lineStyle;
+    const curvature = layout.curvature || 0.3;
+
+    const startX = 50;
+    const endX = this.stage.width() - 50;
+    const centerY = this.stage.height() / 2;
+    const controlY = centerY + (this.stage.height() * curvature);
+
+    // Crear curva Bézier
+    const timeline = new Konva.Line({
+      id: 'timeline-base',
+      points: [
+        startX, centerY,
+        (startX + endX) / 2, controlY,
+        endX, centerY
+      ],
+      stroke: lineStyle.stroke,
+      strokeWidth: lineStyle.strokeWidth,
+      lineCap: lineStyle.lineCap as any,
+      dash: lineStyle.dashArray,
+      tension: 0.5, // Para hacerla curva
+      shadowColor: lineStyle.shadow?.color,
+      shadowBlur: lineStyle.shadow?.blur,
+      shadowOffset: lineStyle.shadow?.offset,
+      shadowOpacity: lineStyle.shadow?.opacity
+    });
+
+    this.mainLayer.add(timeline);
+  }
+
+ private drawWaveTimeline(): void {
+  const layout = this.currentTimelineDesign.layout;
+  const lineStyle = this.currentTimelineDesign.lineStyle;
+  
+  // ✅ USAR VALORES DE CONFIGURACIÓN CORRECTOS
+  const baseY = layout.positionY || this.stage.height() / 2;
+  const amplitude = layout.amplitude || layout.intensity || 30;
+  const frequency = layout.frequency || 0.02;
+  const startX = 50;
+  const endX = this.stage.width() - 50;
+
+  console.log('🌊 Dibujando línea Wave:', { 
+    baseY, 
+    amplitude, 
+    frequency,
+    startX,
+    endX,
+    positionX: layout.positionX 
+  });
+
+  const points: number[] = [];
+  for (let x = startX; x <= endX; x += 5) {
+    const y = baseY + Math.sin((x - startX) * frequency) * amplitude;
+    points.push(x, y);
+  }
+
+  const timeline = new Konva.Line({
+    id: 'timeline-base',
+    points: points,
+    stroke: lineStyle.stroke,
+    strokeWidth: lineStyle.strokeWidth,
+    lineCap: lineStyle.lineCap as any,
+    dash: lineStyle.dashArray,
+    shadowColor: lineStyle.shadow?.color,
+    shadowBlur: lineStyle.shadow?.blur,
+    shadowOffset: lineStyle.shadow?.offset,
+    shadowOpacity: lineStyle.shadow?.opacity
+  });
+
+  this.mainLayer.add(timeline);
+  console.log('✅ Línea Wave creada con', points.length / 2, 'puntos');
+}
+
+  private drawZigzagTimeline(): void {
+    const layout = this.currentTimelineDesign.layout;
+    const lineStyle = this.currentTimelineDesign.lineStyle;
+    const amplitude = layout.amplitude || 40;
+    const segments = layout.segments || 20;
+
+    const centerY = this.stage.height() / 2;
+    const segmentWidth = (this.stage.width() - 100) / segments;
+    const points: number[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const x = 50 + (i * segmentWidth);
+      const y = centerY + (i % 2 === 0 ? -amplitude : amplitude);
+      points.push(x, y);
+    }
+
+    const timeline = new Konva.Line({
+      id: 'timeline-base',
+      points: points,
+      stroke: lineStyle.stroke,
+      strokeWidth: lineStyle.strokeWidth,
+      lineCap: lineStyle.lineCap as any,
+      dash: lineStyle.dashArray,
+      shadowColor: lineStyle.shadow?.color,
+      shadowBlur: lineStyle.shadow?.blur,
+      shadowOffset: lineStyle.shadow?.offset,
+      shadowOpacity: lineStyle.shadow?.opacity
+    });
+
+    this.mainLayer.add(timeline);
+  }
+
+  private drawSpiralTimeline(): void {
+    const layout = this.currentTimelineDesign.layout;
+    const lineStyle = this.currentTimelineDesign.lineStyle;
+    const segments = layout.segments || 36;
+
+    const centerX = this.stage.width() / 2;
+    const centerY = this.stage.height() / 2;
+    const maxRadius = Math.min(centerX, centerY) - 50;
+    const points: number[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 4; // 2 vueltas completas
+      const radius = (i / segments) * maxRadius;
+      
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      points.push(x, y);
+    }
+
+    const timeline = new Konva.Line({
+      id: 'timeline-base',
+      points: points,
+      stroke: lineStyle.stroke,
+      strokeWidth: lineStyle.strokeWidth,
+      lineCap: lineStyle.lineCap as any,
+      dash: lineStyle.dashArray,
+      shadowColor: lineStyle.shadow?.color,
+      shadowBlur: lineStyle.shadow?.blur,
+      shadowOffset: lineStyle.shadow?.offset,
+      shadowOpacity: lineStyle.shadow?.opacity
+    });
+
+    this.mainLayer.add(timeline);
+  }
+
+  private getTimelineYPosition(): number {
+    const layout = this.currentTimelineDesign.layout;
+    
+    switch (layout.orientation) {
+      case 'top': return 100;
+      case 'bottom': return this.stage.height() - 100;
+      default: return this.stage.height() / 2;
+    }
+  }
+
+  private getTimelineXPosition(): number {
+    const layout = this.currentTimelineDesign.layout;
+    
+    switch (layout.orientation) {
+      case 'left': return 100;
+      case 'right': return this.stage.width() - 100;
+      default: return this.stage.width() / 2;
+    }
+  }
+
+    private drawTimelineMarkers(): void {
+    this.currentTimelineDesign.markers.forEach(markerConfig => {
+      this.drawMarkerType(markerConfig);
+    });
+  }
+
+   private drawMarkerType(markerConfig: MarkerStyle): void {
+    const range = this.maxYear - this.minYear;
+    const layout = this.currentTimelineDesign.layout;
+
+    for (let year = this.minYear; year <= this.maxYear; year += markerConfig.interval) {
+      const position = this.calculateMarkerPosition(year, range, layout);
+      
+      if (position) {
+        this.drawSingleMarker(position.x, position.y, year, markerConfig);
+      }
+    }
+  }
+
+  private calculateMarkerPosition(year: number, range: number, layout: TimelineLayout): { x: number; y: number } | null {
+    const progress = (year - this.minYear) / range;
+
+    switch (layout.type) {
+      case 'horizontal':
+        const x = 50 + (progress * (this.stage.width() - 100));
+        const y = this.getTimelineYPosition();
+        return { x, y };
+
+      case 'vertical':
+        const xVert = this.getTimelineXPosition();
+        const yVert = 100 + (progress * (this.stage.height() - 200));
+        return { x: xVert, y: yVert };
+
+      case 'curve':
+        return this.calculateCurveMarkerPosition(progress);
+
+      case 'wave':
+        return this.calculateWaveMarkerPosition(progress);
+
+      case 'zigzag':
+        return this.calculateZigzagMarkerPosition(progress);
+
+      case 'spiral':
+        return this.calculateSpiralMarkerPosition(progress);
+
+      default:
+        return null;
+    }
+  }
+
+   private calculateCurveMarkerPosition(progress: number): { x: number; y: number } {
+    const layout = this.currentTimelineDesign.layout;
+    const curvature = layout.curvature || 0.3;
+
+    const startX = 50;
+    const endX = this.stage.width() - 50;
+    const centerY = this.stage.height() / 2;
+    const controlY = centerY + (this.stage.height() * curvature);
+
+    // Calcular posición en curva Bézier
+    const t = progress;
+    const x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * ((startX + endX) / 2) + t * t * endX;
+    const y = (1 - t) * (1 - t) * centerY + 2 * (1 - t) * t * controlY + t * t * centerY;
+
+    return { x, y };
+  }
+
+  private calculateWaveMarkerPosition(progress: number): { x: number; y: number } {
+    const layout = this.currentTimelineDesign.layout;
+    const amplitude = layout.amplitude || 30;
+    const frequency = layout.frequency || 0.02;
+
+    const centerY = this.stage.height() / 2;
+    const x = 50 + (progress * (this.stage.width() - 100));
+    const y = centerY + Math.sin(x * frequency) * amplitude;
+
+    return { x, y };
+  }
+
+  private calculateZigzagMarkerPosition(progress: number): { x: number; y: number } {
+    const layout = this.currentTimelineDesign.layout;
+    const amplitude = layout.amplitude || 40;
+    const segments = layout.segments || 20;
+
+    const centerY = this.stage.height() / 2;
+    const segmentIndex = Math.floor(progress * segments);
+    const segmentProgress = (progress * segments) - segmentIndex;
+
+    const x = 50 + (progress * (this.stage.width() - 100));
+    const baseY = segmentIndex % 2 === 0 ? centerY - amplitude : centerY + amplitude;
+    const nextY = (segmentIndex + 1) % 2 === 0 ? centerY - amplitude : centerY + amplitude;
+    const y = baseY + (segmentProgress * (nextY - baseY));
+
+    return { x, y };
+  }
+
+  private calculateSpiralMarkerPosition(progress: number): { x: number; y: number } {
+    const layout = this.currentTimelineDesign.layout;
+    const segments = layout.segments || 36;
+
+    const centerX = this.stage.width() / 2;
+    const centerY = this.stage.height() / 2;
+    const maxRadius = Math.min(centerX, centerY) - 50;
+
+    const angle = progress * Math.PI * 4; // 2 vueltas completas
+    const radius = progress * maxRadius;
+
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+
+    return { x, y };
+  }
+
+
+
+  private drawSingleMarker(x: number, centerY: number, year: number, markerConfig: MarkerStyle): void {
+    const markerStyle = markerConfig.style;
+    
+    // Dibujar marcador según la forma
+    let marker: Konva.Shape;
+    
+    switch (markerStyle.shape) {
+      case 'line':
+        marker = new Konva.Line({
+          points: [x, centerY - markerStyle.size, x, centerY + markerStyle.size],
+          stroke: markerStyle.color,
+          strokeWidth: 2
+        });
+        break;
+      
+      case 'circle':
+        marker = new Konva.Circle({
+          x: x,
+          y: centerY,
+          radius: markerStyle.size,
+          fill: markerStyle.color
+        });
+        break;
+      
+      case 'triangle':
+        marker = new Konva.Line({
+          points: [x, centerY - markerStyle.size, x - markerStyle.size, centerY + markerStyle.size, x + markerStyle.size, centerY + markerStyle.size],
+          closed: true,
+          fill: markerStyle.color
+        });
+        break;
+      
+      case 'square':
+        marker = new Konva.Rect({
+          x: x - markerStyle.size / 2,
+          y: centerY - markerStyle.size / 2,
+          width: markerStyle.size,
+          height: markerStyle.size,
+          fill: markerStyle.color
+        });
+        break;
+    }
+
+    /*if (marker) {
+      marker.setAttr('class', 'timeline-marker');
+      this.mainLayer.add(marker);
+
+      // Dibujar etiqueta si está habilitada
+      /*if (markerStyle.label.show) {
+        this.drawMarkerLabel(x, centerY, year, markerConfig);
+      }
+    }*/
+  }
+
+
+  private drawMarkerLabel(x: number, centerY: number, year: number, markerConfig: MarkerStyle): void {
+    const labelStyle = markerConfig.style.label;
+    const markerSize = markerConfig.style.size;
+    const offset = markerSize + 5;
+    
+    let yPosition = centerY;
+    
+    if (markerConfig.position === 'above') {
+      yPosition = centerY - offset;
+    } else if (markerConfig.position === 'below') {
+      yPosition = centerY + offset;
+    }
+
+    const label = new Konva.Text({
+      x: x,
+      y: yPosition,
+      text: year.toString(),
+      fontSize: labelStyle.fontSize,
+      fontFamily: labelStyle.fontFamily,
+      fill: labelStyle.color,
+      align: 'center'
+    });
+
+    // Centrar el texto
+    label.offsetX(label.width() / 2);
+    label.offsetY(label.height() / 2);
+
+    label.setAttr('class', 'timeline-marker');
+    this.mainLayer.add(label);
+  }
+
+ private drawTimelineBackground(centerY: number): void {
+  if (!this.currentTimelineDesign.background || 
+      this.currentTimelineDesign.background.type === 'none') {
+    return;
+  }
+
+  const bgConfig = this.currentTimelineDesign.background;
+  const height = 20; // Altura del área de fondo
+
+  let background: Konva.Shape | null = null;
+
+  if (bgConfig.type === 'gradient' && bgConfig.gradient) {
+    // Para gradientes necesitarías una implementación más compleja
+    // Por simplicidad, usamos un rectángulo sólido por ahora
+    background = new Konva.Rect({
+      x: 50,
+      y: centerY - height / 2,
+      width: this.stage.width() - 100,
+      height: height,
+      fill: bgConfig.gradient.startColor,
+      opacity: bgConfig.opacity
+    });
+  } else if (bgConfig.color) {
+    background = new Konva.Rect({
+      x: 50,
+      y: centerY - height / 2,
+      width: this.stage.width() - 100,
+      height: height,
+      fill: bgConfig.color,
+      opacity: bgConfig.opacity
+    });
+  }
+
+  // Verificar que background fue creado antes de usarlo
+  if (background) {
+    background.setAttr('class', 'timeline-background');
+    this.mainLayer.add(background);
+    background.moveToBottom(); // Enviar al fondo
+  }
+}
+  // Actualizar onResize para re-renderizar la timeline
+  
+
+
 
 
 private async obtenerUsuarioActual(): Promise<any> {
@@ -1165,6 +1780,312 @@ private async obtenerUsuarioActual(): Promise<any> {
     // Crear un archivo vacío como fallback
     return new File([], filename, { type: 'image/png' });
   }
+}
+
+
+
+/**
+ * ✅ INICIALIZAR RESIZE - Configurar eventos para redimensionar
+ */
+private setupCanvasResize(): void {
+  // Agregar event listeners para los bordes
+  this.stage.content.addEventListener('dblclick', this.handleStageDoubleClick.bind(this));
+  this.stage.content.addEventListener('mousedown', this.handleResizeMouseDown.bind(this));
+  document.addEventListener('mousemove', this.handleResizeMouseMove.bind(this));
+  document.addEventListener('mouseup', this.handleResizeMouseUp.bind(this));
+}
+
+/**
+ * ✅ MANEJAR DOBLE CLIC - Activar modo resize en bordes
+ */
+private handleStageDoubleClick(event: MouseEvent): void {
+  if (this.isResizing) return;
+  
+  const stageRect = this.stage.container().getBoundingClientRect();
+  const mouseX = event.clientX - stageRect.left;
+  const mouseY = event.clientY - stageRect.top;
+  
+  const tolerance = 10; // Pixeles de tolerancia para detectar borde
+  const handle = this.getResizeHandle(mouseX, mouseY, tolerance);
+  
+  if (handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.activateResizeMode(handle);
+  }
+}
+
+/**
+ * ✅ DETECTAR MANIJA DE REDIMENSION - Según posición del mouse
+ */
+private getResizeHandle(mouseX: number, mouseY: number, tolerance: number): string {
+  const width = this.stage.width();
+  const height = this.stage.height();
+  
+  const isNearLeft = mouseX <= tolerance;
+  const isNearRight = mouseX >= width - tolerance;
+  const isNearTop = mouseY <= tolerance;
+  const isNearBottom = mouseY >= height - tolerance;
+  
+  if (isNearTop && isNearLeft) return 'nw';
+  if (isNearTop && isNearRight) return 'ne';
+  if (isNearBottom && isNearLeft) return 'sw';
+  if (isNearBottom && isNearRight) return 'se';
+  if (isNearLeft) return 'w';
+  if (isNearRight) return 'e';
+  if (isNearTop) return 'n';
+  if (isNearBottom) return 's';
+  
+  return '';
+}
+
+/**
+ * ✅ ACTIVAR MODO REDIMENSION
+ */
+private activateResizeMode(handle: string): void {
+  this.isResizing = true;
+  this.resizeHandle = handle;
+  
+  // Cambiar cursor según la manija
+  const cursor = this.getResizeCursor(handle);
+  this.stage.container().style.cursor = cursor;
+  
+  console.log(`📐 Modo resize activado: ${handle}`);
+}
+
+/**
+ * ✅ OBTENER CURSOR SEGÚN MANIJA
+ */
+private getResizeCursor(handle: string): string {
+  const cursors: { [key: string]: string } = {
+    'n': 'ns-resize',
+    's': 'ns-resize',
+    'e': 'ew-resize',
+    'w': 'ew-resize',
+    'ne': 'nesw-resize',
+    'nw': 'nwse-resize',
+    'se': 'nwse-resize',
+    'sw': 'nesw-resize'
+  };
+  return cursors[handle] || 'default';
+}
+
+/**
+ * ✅ MANEJAR MOUSE DOWN PARA RESIZE
+ */
+private handleResizeMouseDown(event: MouseEvent): void {
+  if (!this.isResizing) return;
+  
+  event.preventDefault();
+  
+  this.originalMouseX = event.clientX;
+  this.originalMouseY = event.clientY;
+  this.originalCanvasWidth = this.canvasWidth;
+  this.originalCanvasHeight = this.canvasHeight;
+  
+  console.log(`🔧 Iniciando resize desde: ${this.canvasWidth}x${this.canvasHeight}`);
+}
+
+/**
+ * ✅ MANEJAR MOUSE MOVE PARA RESIZE
+ */
+private handleResizeMouseMove(event: MouseEvent): void {
+  if (!this.isResizing) return;
+  
+  const deltaX = event.clientX - this.originalMouseX;
+  const deltaY = event.clientY - this.originalMouseY;
+  
+  let newWidth = this.originalCanvasWidth;
+  let newHeight = this.originalCanvasHeight;
+  
+  // Calcular nuevas dimensiones según la manija
+  switch (this.resizeHandle) {
+    case 'e':
+      newWidth = Math.max(400, this.originalCanvasWidth + deltaX);
+      break;
+    case 'w':
+      newWidth = Math.max(400, this.originalCanvasWidth - deltaX);
+      break;
+    case 's':
+      newHeight = Math.max(300, this.originalCanvasHeight + deltaY);
+      break;
+    case 'n':
+      newHeight = Math.max(300, this.originalCanvasHeight - deltaY);
+      break;
+    case 'se':
+      newWidth = Math.max(400, this.originalCanvasWidth + deltaX);
+      newHeight = Math.max(300, this.originalCanvasHeight + deltaY);
+      break;
+    case 'sw':
+      newWidth = Math.max(400, this.originalCanvasWidth - deltaX);
+      newHeight = Math.max(300, this.originalCanvasHeight + deltaY);
+      break;
+    case 'ne':
+      newWidth = Math.max(400, this.originalCanvasWidth + deltaX);
+      newHeight = Math.max(300, this.originalCanvasHeight - deltaY);
+      break;
+    case 'nw':
+      newWidth = Math.max(400, this.originalCanvasWidth - deltaX);
+      newHeight = Math.max(300, this.originalCanvasHeight - deltaY);
+      break;
+  }
+  
+  this.resizeCanvas(newWidth, newHeight);
+}
+
+/**
+ * ✅ REDIMENSIONAR CANVAS
+ */
+private resizeCanvas(width: number, height: number): void {
+  this.canvasWidth = Math.round(width);
+  this.canvasHeight = Math.round(height);
+  
+  // Actualizar dimensiones del stage
+  this.stage.width(this.canvasWidth);
+  this.stage.height(this.canvasHeight);
+  
+  // Actualizar fondo
+  this.updateBackgroundColor(this.backgroundColor);
+  
+  // Re-renderizar timeline
+  this.renderTimelineBase();
+  this.renderTimelineEvents();
+  
+  // Actualizar elementos del proyecto
+  if (this.proyectoTitleElement) {
+    this.proyectoTitleElement.width(this.canvasWidth - 100);
+  }
+  if (this.proyectoDescriptionElement) {
+    this.proyectoDescriptionElement.width(this.canvasWidth - 100);
+  }
+  
+  this.stage.batchDraw();
+}
+
+/**
+ * ✅ MANEJAR MOUSE UP PARA RESIZE
+ */
+private handleResizeMouseUp(): void {
+  if (this.isResizing) {
+    this.isResizing = false;
+    this.stage.container().style.cursor = 'default';
+    
+    console.log(`✅ Resize completado: ${this.canvasWidth}x${this.canvasHeight}`);
+  }
+}
+
+
+
+/**
+ * ✅ ESTABLECER DIMENSIONES ESPECÍFICAS
+ */
+setCanvasDimensions(width: number, height: number): void {
+  const validWidth = Math.max(400, Math.min(5000, width));
+  const validHeight = Math.max(300, Math.min(5000, height));
+  
+  this.resizeCanvas(validWidth, validHeight);
+}
+
+/**
+ * ✅ ESTABLECER TAMAÑO PREDETERMINADO
+ */
+setPresetSize(size: 'a4' | 'a3' | 'hd' | 'square' | 'custom'): void {
+  const presets: { [key: string]: { width: number; height: number } } = {
+    'a4': { width: 794, height: 1123 }, // A4 en pixels a 96 DPI
+    'a3': { width: 1123, height: 1587 }, // A3 en pixels
+    'hd': { width: 1280, height: 720 }, // HD
+    'square': { width: 1000, height: 1000 }, // Cuadrado
+    'custom': { width: this.canvasWidth, height: this.canvasHeight }
+  };
+  
+  const preset = presets[size];
+  if (preset) {
+    this.setCanvasDimensions(preset.width, preset.height);
+  }
+}
+
+
+/**
+ * ✅ MOSTRAR INDICADORES DE BORDE (solo durante hover)
+ */
+private showResizeHandles(): void {
+  // Esto se puede llamar durante el hover para mostrar manijas visuales
+  const handles = this.createResizeHandles();
+  handles.forEach(handle => {
+    this.mainLayer.add(handle);
+  });
+  this.mainLayer.batchDraw();
+}
+
+/**
+ * ✅ CREAR MANIJAS VISUALES DE REDIMENSION
+ */
+private createResizeHandles(): Konva.Rect[] {
+  const width = this.stage.width();
+  const height = this.stage.height();
+  const handleSize = 8;
+  
+  const handles: Konva.Rect[] = [];
+  const positions = [
+    { x: 0, y: 0, handle: 'nw' }, // Esquina superior izquierda
+    { x: width / 2, y: 0, handle: 'n' }, // Borde superior
+    { x: width, y: 0, handle: 'ne' }, // Esquina superior derecha
+    { x: width, y: height / 2, handle: 'e' }, // Borde derecho
+    { x: width, y: height, handle: 'se' }, // Esquina inferior derecha
+    { x: width / 2, y: height, handle: 's' }, // Borde inferior
+    { x: 0, y: height, handle: 'sw' }, // Esquina inferior izquierda
+    { x: 0, y: height / 2, handle: 'w' } // Borde izquierdo
+  ];
+  
+  positions.forEach(pos => {
+    const handle = new Konva.Rect({
+      x: pos.x - (pos.x === 0 ? 0 : handleSize / 2),
+      y: pos.y - (pos.y === 0 ? 0 : handleSize / 2),
+      width: handleSize,
+      height: handleSize,
+      fill: '#007bff',
+      stroke: '#ffffff',
+      strokeWidth: 1,
+      cornerRadius: 1,
+      listening: false, // No captura eventos
+      opacity: 0.7
+    });
+    
+    handle.setAttr('resizeHandle', pos.handle);
+    handles.push(handle);
+  });
+  
+  return handles;
+}
+
+
+
+/**
+ * ✅ MANEJAR CAMBIO DE ANCHO DESDE INPUT
+ */
+onWidthChange(event: any): void {
+  const newWidth = parseInt(event.target.value);
+  if (!isNaN(newWidth) && newWidth >= 400 && newWidth <= 5000) {
+    this.setCanvasDimensions(newWidth, this.canvasHeight);
+  }
+}
+
+/**
+ * ✅ MANEJAR CAMBIO DE ALTO DESDE INPUT
+ */
+onHeightChange(event: any): void {
+  const newHeight = parseInt(event.target.value);
+  if (!isNaN(newHeight) && newHeight >= 300 && newHeight <= 5000) {
+    this.setCanvasDimensions(this.canvasWidth, newHeight);
+  }
+}
+
+private clearResizeHandles(): void {
+  const handles = this.mainLayer.find('.resize-handle');
+  handles.forEach(handle => {
+    handle.destroy();
+  });
+  this.mainLayer.batchDraw();
 }
 
 
@@ -1427,6 +2348,9 @@ private async obtenerUsuarioActual(): Promise<any> {
 
   private async cargarProyectoDesdeData(proyectoData: ProyectoData, titulo: string, descripcion: string): Promise<void> {
   try {
+    console.log('📥 Iniciando carga de proyecto:', titulo);
+    console.log('📦 Datos del proyecto:', proyectoData);
+    
     // 1. Establecer propiedades básicas
     this.proyectoNombre = titulo;
     this.proyectoDescripcion = descripcion;
@@ -1445,36 +2369,83 @@ private async obtenerUsuarioActual(): Promise<any> {
     this.timelineEvents = [];
     this.limpiarEditorCompletamente();
 
-    // 4. Cargar configuración
+    // 4. Cargar configuración básica
     this.backgroundColor = proyectoData.configuracion.backgroundColor;
     this.minYear = proyectoData.configuracion.minYear;
     this.maxYear = proyectoData.configuracion.maxYear;
+    
+    // Redimensionar canvas según la configuración guardada
+    if (proyectoData.configuracion.stageWidth && proyectoData.configuracion.stageHeight) {
+      this.canvasWidth = proyectoData.configuracion.stageWidth;
+      this.canvasHeight = proyectoData.configuracion.stageHeight;
+      this.stage.width(this.canvasWidth);
+      this.stage.height(this.canvasHeight);
+    }
+    
     this.updateBackgroundColor(this.backgroundColor);
 
-    // 5. ✅ PRECARGAR IMÁGENES ANTES DE CARGAR EVENTOS
+    // ✅ CORREGIDO: Buscar lineaDeTiempo en configuracionVisual
+    const datosCompletos = proyectoData as any;
+    
+    console.log('🔍 Buscando configuración de línea de tiempo...');
+    console.log('📋 configuracionVisual:', datosCompletos.configuracionVisual);
+    
+    if (datosCompletos.configuracionVisual?.lineaDeTiempo) {
+      console.log('✅ Configuración de línea encontrada:', datosCompletos.configuracionVisual.lineaDeTiempo);
+      this.convertirLineaTiempoConfig(datosCompletos.configuracionVisual.lineaDeTiempo);
+    } else if (datosCompletos.lineaDeTiempo) {
+      // Fallback: buscar en nivel raíz por si acaso
+      console.log('✅ Configuración de línea encontrada (nivel raíz):', datosCompletos.lineaDeTiempo);
+      this.convertirLineaTiempoConfig(datosCompletos.lineaDeTiempo);
+    } else {
+      console.warn('⚠️ No se encontró configuración de línea de tiempo, usando diseño por defecto');
+    }
+
+    // 5. Precargar imágenes antes de cargar eventos
     console.log('🖼️ Precargando imágenes del proyecto...');
     const eventosConImagenesCargadas = await this.preloadImagesForEvents(proyectoData.eventos);
     
-    // 6. Cargar eventos con imágenes precargadas
-    this.timelineEvents = eventosConImagenesCargadas;
+    // 6. Asignar eventos CON zonaDesign preservado
+    this.timelineEvents = eventosConImagenesCargadas.map(evento => {
+      const eventoOriginal = proyectoData.eventos.find(e => e.year === evento.year);
+      return {
+        ...evento,
+        zonaDesign: (eventoOriginal as any)?.zonaDesign || null
+      };
+    });
     
-    // 7. Cargar elementos Konva
+    // 7. ✅ Renderizar la línea de tiempo base ANTES de cargar elementos decorativos
+    console.log('📏 Renderizando línea de tiempo base...');
+    this.renderTimelineBase();
+
+    // 8. Cargar elementos decorativos
     if (proyectoData.elementosKonva && proyectoData.elementosKonva.length > 0) {
-      for (const elemento of proyectoData.elementosKonva) {
-        await this.crearElementoDesdeSerializacion(elemento);
+      console.log('🎨 Cargando elementos decorativos de la plantilla...');
+      
+      const elementos = proyectoData.elementosKonva as any[];
+      
+      // Cargar otros elementos decorativos (sin incluir la línea base)
+      for (const elemento of elementos) {
+        const esLineaPrincipal = elemento.id === 'decor-1' || elemento.tipo === 'line';
+        if (!esLineaPrincipal) {
+          await this.crearElementoDesdeSerializacion(elemento);
+        }
       }
     }
 
-    // 8. Renderizar
+    // 9. Renderizar eventos con su diseño
+    console.log('📍 Renderizando eventos con diseño de plantilla...');
     this.renderTimelineEvents();
     
-    console.log('📝 Proyecto cargado en editor:', proyectoData.metadata.nombre);
+    console.log('✅ Proyecto cargado completamente en editor:', proyectoData.metadata.nombre);
     
   } catch (error) {
     console.error('❌ Error cargando proyecto desde JSON:', error);
     this.mostrarMensaje('Error al cargar el proyecto', 'error');
   }
 }
+
+
 
 
 private async preloadImagesForEvents(eventos: TimelineEvent[]): Promise<TimelineEvent[]> {
@@ -1611,6 +2582,527 @@ private eliminarElementoSeguro(elemento: Konva.Node): void {
     }
   }
 }
+seleccionarArchivoPlantilla(): void {
+  const fileInput = document.getElementById('import-plantilla') as HTMLInputElement;
+  if (fileInput) {
+    fileInput.click();
+  }
+}
+
+
+importarPlantillaDesdeArchivo(event: any): void {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Verificar que sea un archivo JSON
+  if (!file.name.toLowerCase().endsWith('.json')) {
+    alert('Por favor, selecciona un archivo JSON válido.');
+    return;
+  }
+
+  const reader = new FileReader();
+  
+  reader.onload = (e: any) => {
+    try {
+      const plantillaJSON = JSON.parse(e.target.result);
+      console.log('📄 JSON parseado:', plantillaJSON);
+      
+      // Verificar que tenga la estructura esperada
+      if (!plantillaJSON.configuracionVisual || !plantillaJSON.configuracionVisual.zonasEventos) {
+        throw new Error('El archivo no tiene la estructura de plantilla válida');
+      }
+      
+      this.cargarPlantillaDesdeJSON(plantillaJSON);
+      this.mostrarMensaje(`✅ Plantilla importada correctamente con ${plantillaJSON.configuracionVisual.zonasEventos.length} eventos`);
+    } catch (error) {
+      console.error('❌ Error parseando JSON:', error);
+      alert('Error: El archivo no es una plantilla JSON válida.');
+    }
+  };
+
+  reader.onerror = (error) => {
+    console.error('❌ Error leyendo archivo:', error);
+    alert('Error al leer el archivo.');
+  };
+
+  reader.readAsText(file);
+  
+  // Limpiar el input para permitir re-seleccionar el mismo archivo
+  event.target.value = '';
+}
+
+
+
+
+
+private cargarPlantillaDesdeJSON(plantillaJSON: any): void {
+  try {
+    console.log('📥 Cargando plantilla desde JSON...', plantillaJSON);
+
+     if (plantillaJSON.configuracionVisual?.lineaDeTiempo) {
+      this.cargarConfiguracionLineaTiempo(plantillaJSON.configuracionVisual.lineaDeTiempo);
+    }
+    
+
+    // 1. Cargar configuración visual básica
+    this.cargarConfiguracionVisual(plantillaJSON.configuracionVisual);
+    
+    // 2. Cargar elementos decorativos (línea principal, etc.)
+    this.cargarElementosDecorativos(plantillaJSON.configuracionVisual.elementosDecorativos);
+    
+    // 3. Configurar zonas de eventos CON LA INFORMACIÓN REAL
+    this.configurarZonasEventos(plantillaJSON.configuracionVisual.zonasEventos);
+    
+    // 4. Actualizar el nombre y descripción del proyecto si están en el JSON
+    if (plantillaJSON.nombre) {
+      this.proyectoNombre = plantillaJSON.nombre;
+    }
+    if (plantillaJSON.descripcion) {
+      this.proyectoDescripcion = plantillaJSON.descripcion;
+    }
+
+    // 5. Re-renderizar la timeline con los eventos reales
+    this.renderTimelineEvents();
+    
+    console.log('✅ Plantilla cargada correctamente con eventos reales');
+    
+  } catch (error) {
+    console.error('❌ Error cargando plantilla:', error);
+    this.mostrarMensaje('Error al cargar la plantilla', 'error');
+  }
+}
+
+
+private cargarConfiguracionLineaTiempo(lineaConfig: any): void {
+  try {
+    console.log('📈 Cargando configuración de línea de tiempo:', lineaConfig);
+    
+    // Buscar un diseño de timeline que coincida con el tipo
+    const diseñoCoincidente = this.timelineDesigns.find(design => 
+      design.layout.type === lineaConfig.tipo
+    );
+    
+    if (diseñoCoincidente) {
+      this.currentTimelineDesign = diseñoCoincidente;
+      this.selectedTimelineDesignId = diseñoCoincidente.id;
+      
+      // Aplicar estilo personalizado si existe
+      if (lineaConfig.estilo) {
+        this.aplicarEstiloLineaTiempo(lineaConfig.estilo);
+      }
+      
+      // Aplicar propiedades específicas del tipo
+      this.aplicarPropiedadesLineaTiempo(lineaConfig);
+      
+      console.log(`✅ Configuración de línea aplicada: ${lineaConfig.tipo}`);
+    } else {
+      console.warn(`⚠️ No se encontró diseño para tipo: ${lineaConfig.tipo}, usando por defecto`);
+      // Usar diseño por defecto pero aplicar la configuración
+      this.aplicarConfiguracionLineaPersonalizada(lineaConfig);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error cargando configuración de línea:', error);
+  }
+}
+
+
+private aplicarEstiloLineaTiempo(estilo: any): void {
+  // Actualizar el diseño actual con el estilo de la plantilla
+  this.currentTimelineDesign = {
+    ...this.currentTimelineDesign,
+    lineStyle: {
+      ...this.currentTimelineDesign.lineStyle,
+      stroke: estilo.stroke || this.currentTimelineDesign.lineStyle.stroke,
+      strokeWidth: estilo.strokeWidth || this.currentTimelineDesign.lineStyle.strokeWidth,
+      lineCap: (estilo.lineCap as any) || this.currentTimelineDesign.lineStyle.lineCap
+    }
+  };
+}
+
+private aplicarPropiedadesLineaTiempo(lineaConfig: any): void {
+  // Actualizar propiedades de posición según la configuración
+  if (lineaConfig.positionX !== undefined || lineaConfig.positionY !== undefined) {
+    this.currentTimelineDesign = {
+      ...this.currentTimelineDesign,
+      layout: {
+        ...this.currentTimelineDesign.layout,
+        // Para líneas horizontales, usar positionY
+        ...(lineaConfig.tipo === 'horizontal' && lineaConfig.positionY !== undefined && {
+          orientation: this.calcularOrientacionDesdePosicionY(lineaConfig.positionY)
+        }),
+        // Para líneas verticales, usar positionX
+        ...(lineaConfig.tipo === 'vertical' && lineaConfig.positionX !== undefined && {
+          orientation: this.calcularOrientacionDesdePosicionX(lineaConfig.positionX)
+        }),
+        // Para líneas curvas y onduladas
+        ...(lineaConfig.tipo === 'curve' && {
+          curvature: this.calcularCurvaturaDesdeConfig(lineaConfig)
+        }),
+        ...(lineaConfig.tipo === 'wave' && {
+          amplitude: lineaConfig.intensity || 30,
+          frequency: 0.02
+        }),
+        ...(lineaConfig.tipo === 'zigzag' && {
+          amplitude: lineaConfig.intensity || 40,
+          segments: 20
+        }),
+        ...(lineaConfig.tipo === 'spiral' && {
+          segments: Math.round((lineaConfig.turns || 3) * 12) // Convertir vueltas a segmentos
+        }),
+        ...(lineaConfig.tipo === 's-curve' && {
+          amplitude: lineaConfig.intensity || 40,
+          segments: 20
+        })
+        
+      }
+    };
+  }
+}
+
+private calcularOrientacionDesdePosicionY(positionY: number): "top" | "bottom" | "center" {
+  if (positionY < 33) return "top";
+  if (positionY > 66) return "bottom";
+  return "center";
+}
+
+/**
+ * ✅ Calcular orientación desde posición X (para líneas verticales)
+ */
+private calcularOrientacionDesdePosicionX(positionX: number): "left" | "right" | "center" {
+  if (positionX < 33) return "left";
+  if (positionX > 66) return "right";
+  return "center";
+}
+
+/**
+ * ✅ Calcular curvatura desde configuración
+ */
+private calcularCurvaturaDesdeConfig(lineaConfig: any): number {
+  // Convertir posición Y a curvatura (0.1 a 0.5)
+  const stageHeight = this.stage.height();
+  const centerY = stageHeight / 2;
+  const deviation = Math.abs(lineaConfig.positionY - centerY);
+  return Math.min(0.5, deviation / stageHeight * 2);
+}
+
+/**
+ * ✅ Aplicar configuración personalizada cuando no hay diseño coincidente
+ */
+private aplicarConfiguracionLineaPersonalizada(lineaConfig: any): void {
+  // Crear un diseño personalizado basado en la configuración
+  const diseñoPersonalizado: TimelineDesign = {
+    id: 'custom-from-template',
+    name: `Personalizado - ${lineaConfig.tipo}`,
+    description: 'Diseño cargado desde plantilla',
+    layout: {
+      type: lineaConfig.tipo as any,
+      orientation: 'center'
+    },
+    lineStyle: {
+      stroke: lineaConfig.estilo?.stroke || '#070707ff',
+      strokeWidth: lineaConfig.estilo?.strokeWidth || 5,
+      strokeStyle: 'solid',
+      lineCap: (lineaConfig.estilo?.lineCap as any) || 'round',
+      shadow: {
+        color: 'rgba(0,0,0,0.3)',
+        blur: 8,
+        offset: { x: 0, y: 3 },
+        opacity: 0.5
+      }
+    },
+    markers: [
+      {
+        type: 'year',
+        position: 'both',
+        interval: 10,
+        style: {
+          size: 4,
+          color: lineaConfig.estilo?.stroke || '#070707ff',
+          shape: 'line',
+          label: {
+            show: true,
+            fontSize: 12,
+            fontFamily: 'Arial',
+            color: '#2c3e50',
+            position: 'outside'
+          }
+        }
+      }
+    ]
+  };
+
+  this.currentTimelineDesign = diseñoPersonalizado;
+  this.selectedTimelineDesignId = 'custom-from-template';
+}
+
+
+
+
+private configurarZonasEventos(zonas: any[]): void {
+  // Limpiar eventos existentes
+  this.timelineEvents = [];
+  
+  // Crear eventos basados en las zonas de la plantilla
+  zonas.forEach((zona, index) => {
+    this.crearEventoDesdeZona(zona, index + 1);
+  });
+
+  // Recalcular el rango de años basado en los eventos reales
+  this.calculateYearRange();
+  
+  console.log(`✅ Cargadas ${this.timelineEvents.length} zonas como eventos`);
+}
+
+private crearEventoDesdeZona(zona: any, orden: number): void {
+  // Extraer información real de los elementos de la zona
+  const elementos = zona.elementos || [];
+  
+  // Buscar los textos en los elementos de la zona
+  let titulo = `Evento ${orden}`;
+  let fechaTexto = '2024'; // Valor por defecto
+  let descripcion = 'Descripción del evento...';
+  let person = '';
+  let link = '';
+
+   elementos.forEach((elemento: any) => {
+    if (elemento.configuracion && elemento.configuracion.texto) {
+      switch (elemento.tipo) {
+        case 'titulo':
+          if (elemento.configuracion.texto === 'Título del evento') {
+            titulo = `Evento ${orden}`;
+          } else {
+            titulo = elemento.configuracion.texto;
+          }
+          break;
+        case 'fecha':
+          fechaTexto = elemento.configuracion.texto || '2024';
+          break;
+        case 'descripcion':
+          if (elemento.configuracion.texto === 'Descripción del evento...') {
+            descripcion = '';
+          } else {
+            descripcion = elemento.configuracion.texto;
+          }
+          break;
+        case 'personaje':
+          if(elemento.configuracion.texto==='personaje'){
+            person='';
+          }else{
+            person=elemento.configuracion.texto;
+          }
+          break;
+
+        case 'link':
+          // ✅ CAPTURAR EL TEXTO DEL LINK SI EXISTE
+          if (elemento.configuracion.texto && 
+              elemento.configuracion.texto !== 'Enlace' && 
+              elemento.configuracion.texto !== 'Más información') {
+            link = elemento.configuracion.texto;
+          }
+          break;
+      }
+    }
+  });
+
+  // Convertir la fecha a número (año)
+  let year = this.calcularAnioPorOrden(orden);
+  if (fechaTexto && !isNaN(Number(fechaTexto))) {
+    year = Number(fechaTexto);
+  } else if (fechaTexto === '2024') {
+    // Si es el placeholder, usar el año calculado
+    year = this.calcularAnioPorOrden(orden);
+  }
+
+  const evento: TimelineEvent = {
+    year: year,
+    title: titulo,
+    person: person,
+    description: descripcion,
+    image: '',
+    link: link
+  };
+  
+  // Guardar información de diseño de la zona
+  evento['zonaDesign'] = {
+    id: zona.id,
+    nombre: zona.nombre,
+    posicion: zona.posicion,
+    elementos: this.limpiarPlaceholdersDeElementos(zona.elementos, evento), // ← LIMPIAR PLACEHOLDERS
+    contenedor: zona.contenedor
+  };
+  
+  this.timelineEvents.push(evento);
+  console.log(`✅ Evento creado: ${titulo} (${year})`);
+}
+
+private limpiarPlaceholdersDeElementos(elementos: any[], evento: TimelineEvent): any[] {
+  return elementos.map(elemento => {
+    if (elemento.configuracion && elemento.configuracion.texto) {
+      const nuevoElemento = { ...elemento };
+      
+      switch (elemento.tipo) {
+        case 'titulo':
+          if (elemento.configuracion.texto === 'Título del evento') {
+            nuevoElemento.configuracion = {
+              ...elemento.configuracion,
+              texto: evento.title // Usar el título real del evento
+            };
+          }
+          break;
+          
+        case 'fecha':
+          if (elemento.configuracion.texto === '2024') {
+            nuevoElemento.configuracion = {
+              ...elemento.configuracion,
+              texto: evento.year.toString() // Usar el año real del evento
+            };
+          }
+          break;
+          
+        case 'descripcion':
+          if (elemento.configuracion.texto === 'Descripción del evento...') {
+            nuevoElemento.configuracion = {
+              ...elemento.configuracion,
+              texto: evento.description // Usar la descripción real
+            };
+          }
+          break;
+        case 'link': // ← NUEVO: Manejar placeholders de enlaces
+          if (elemento.configuracion.texto === 'Enlace' || elemento.configuracion.texto === '🔗 Ver más') {
+            nuevoElemento.configuracion = {
+              ...elemento.configuracion,
+              texto: evento.link ? 'Ver más' : 'Agregar enlace...'
+            };
+          }
+          break;
+      }
+      
+      return nuevoElemento;
+    }
+    
+    return elemento;
+  });
+}
+
+/**
+ * ✅ NUEVO: Dibujar línea en S (S-Curve)
+ */
+private drawSCurveTimeline(): void {
+  const layout = this.currentTimelineDesign.layout;
+  const lineStyle = this.currentTimelineDesign.lineStyle;
+  
+  const centerX = (layout.positionX || this.stage.width() / 2) + 100;
+  const centerY = layout.positionY || this.stage.height() / 2;
+  const curveHeight = (layout.intensitycurva || 100) * 2;
+  const cornerRadius = 20;
+  
+  const totalWidth = layout.anchoTotal || 1110;
+  const halfWidth = totalWidth / 2;
+
+  const startX = centerX - halfWidth;
+  const endX = centerX + halfWidth;
+
+  const sCurve = new Konva.Shape({
+    id: 'timeline-base',
+    sceneFunc: (context, shape) => {
+      context.beginPath();
+
+      const punto1X = startX + totalWidth * 0.7;
+      context.moveTo(startX, centerY - curveHeight);
+      context.lineTo(punto1X, centerY - curveHeight);
+
+      context.arcTo(
+        punto1X + cornerRadius * 2, centerY - curveHeight,
+        punto1X + cornerRadius * 2, centerY - curveHeight + cornerRadius * 2,
+        cornerRadius
+      );
+
+      const bajadaY = centerY - cornerRadius;
+      context.lineTo(punto1X + cornerRadius * 2, bajadaY);
+
+      context.arcTo(
+        punto1X + cornerRadius * 2, centerY,
+        punto1X + cornerRadius, centerY,
+        cornerRadius
+      );
+
+      const punto2X = startX + totalWidth * 0.05;
+      context.lineTo(punto2X, centerY);
+
+      context.arcTo(
+        punto2X - cornerRadius * 2, centerY,
+        punto2X - cornerRadius * 2, centerY + cornerRadius,
+        cornerRadius
+      );
+
+      const subidaY = centerY + curveHeight - cornerRadius;
+      context.lineTo(punto2X - cornerRadius * 2, subidaY);
+
+      context.arcTo(
+        punto2X - cornerRadius * 2, centerY + curveHeight,
+        punto2X - cornerRadius, centerY + curveHeight,
+        cornerRadius
+      );
+
+      context.lineTo(endX * 0.77, centerY + curveHeight);
+      
+      context.strokeShape(shape);
+    },
+    stroke: lineStyle.stroke,
+    strokeWidth: lineStyle.strokeWidth,
+    lineCap: lineStyle.lineCap as any,
+    lineJoin: 'round',
+    shadowColor: lineStyle.shadow?.color,
+    shadowBlur: lineStyle.shadow?.blur,
+    shadowOffset: lineStyle.shadow?.offset,
+    shadowOpacity: lineStyle.shadow?.opacity
+  });
+
+  this.mainLayer.add(sCurve);
+}
+
+/**
+ * ✅ NUEVO: Línea personalizada/libre (Custom)
+ */
+private drawCustomTimeline(): void {
+  // Para líneas personalizadas, no dibujar nada automáticamente
+  // El usuario/admin debe haber definido los elementos manualmente
+  console.log('📝 Modo línea personalizada - sin dibujo automático');
+}
+
+
+
+private calcularAnioPorOrden(orden: number): number {
+  // Distribuir años equitativamente entre minYear y maxYear
+  const totalEventos = this.timelineEvents.length;
+  const rango = this.maxYear - this.minYear;
+  return this.minYear + Math.round((orden - 1) * (rango / Math.max(1, totalEventos - 1)));
+}
+
+
+private cargarConfiguracionVisual(configuracion: any): void {
+  // Configurar dimensiones del canvas
+  this.canvasWidth = configuracion.canvasWidth;
+  this.canvasHeight = configuracion.canvasHeight;
+  this.backgroundColor = configuracion.backgroundColor;
+  
+  // Actualizar stage
+  this.stage.width(this.canvasWidth);
+  this.stage.height(this.canvasHeight);
+  this.updateBackgroundColor(this.backgroundColor);
+  
+  // ✅ NUEVO: Si no hay configuración específica de línea, usar la por defecto
+  if (!configuracion.lineaDeTiempo) {
+    console.log('ℹ️ No hay configuración específica de línea, usando diseño por defecto');
+    const defaultDesign = this.timelineDesignService.getTimelineDesignById(this.selectedTimelineDesignId);
+    if (defaultDesign) {
+      this.currentTimelineDesign = defaultDesign;
+    }
+  }
+}
+
+
 
 
 
@@ -1666,12 +3158,83 @@ private crearNuevoFondo(color: string): void {
     return node.getAttr('esEvento') === true;
   }
 
-  private cargarElementosDecorativos(elementos: any[]): void {
+  /*private cargarElementosDecorativos(elementos: any[]): void {
     elementos.forEach(elemento => {
       this.crearElementoDesdeSerializacion(elemento);
     });
     this.mainLayer.batchDraw();
+  }*/
+
+  private cargarElementosDecorativos(elementos: any[]): void {
+  elementos.forEach(elemento => {
+    if (elemento.tipo === 'line' && elemento.id === 'decor-1') {
+      this.crearLineaPrincipal(elemento);
+    } else {
+      // Si no existe crearElementoDecorativo, crea uno básico o elimina esta línea
+      this.crearElementoDecorativoBasico(elemento);
+    }
+  });
+}
+
+
+private crearElementoDecorativoBasico(elemento: any): void {
+  try {
+    const konvaElement = elemento.konvaElement;
+    
+    switch (konvaElement.tipo) {
+      case 'Line':
+        const line = new Konva.Line({
+          points: konvaElement.points,
+          stroke: konvaElement.stroke,
+          strokeWidth: konvaElement.strokeWidth,
+          lineCap: konvaElement.lineCap as any,
+          listening: false
+        });
+        this.mainLayer.add(line);
+        break;
+        
+      case 'Group':
+        // Para grupos, crear un grupo básico
+        const group = new Konva.Group({
+          x: konvaElement.x,
+          y: konvaElement.y,
+          scaleX: konvaElement.scaleX,
+          scaleY: konvaElement.scaleY,
+          rotation: konvaElement.rotation,
+          listening: false
+        });
+        this.mainLayer.add(group);
+        break;
+        
+      default:
+        console.warn('Tipo de elemento decorativo no manejado:', konvaElement.tipo);
+    }
+  } catch (error) {
+    console.error('Error creando elemento decorativo:', error);
   }
+}
+
+
+private crearLineaPrincipal(elemento: any): void {
+  const konvaElement = elemento.konvaElement;
+  
+  const linea = new Konva.Line({
+    id: 'linea-principal',
+    points: konvaElement.points,
+    stroke: konvaElement.stroke,
+    strokeWidth: konvaElement.strokeWidth,
+    lineCap: konvaElement.lineCap as any,
+    x: konvaElement.x,
+    y: konvaElement.y,
+    scaleX: konvaElement.scaleX,
+    scaleY: konvaElement.scaleY,
+    rotation: konvaElement.rotation,
+    listening: false // No interactiva
+  });
+  
+  this.mainLayer.add(linea);
+  this.mainLayer.batchDraw();
+}
 
   private async crearElementoDesdeSerializacion(elemento: any): Promise<void> {
   switch (elemento.tipo) {
@@ -1792,6 +3355,154 @@ private async crearGroupDesdeSerializacionConImagenes(elemento: any): Promise<vo
   this.mainLayer.add(group);
   this.configurarInteracciones(group);
 }
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * ✅ ZOOM IN - Aumentar zoom
+ */
+zoomIn(): void {
+  const newZoom = this.zoomLevel + this.zoomStep;
+  if (newZoom <= this.maxZoom) {
+    this.applyZoom(newZoom);
+  }
+}
+
+/**
+ * ✅ ZOOM OUT - Disminuir zoom
+ */
+zoomOut(): void {
+  const newZoom = this.zoomLevel - this.zoomStep;
+  if (newZoom >= this.minZoom) {
+    this.applyZoom(newZoom);
+  }
+}
+
+/**
+ * ✅ SET ZOOM - Establecer zoom específico
+ */
+setZoom(event: any): void {
+  const newZoom = parseInt(event.target.value);
+  this.applyZoom(newZoom);
+}
+
+/**
+ * ✅ RESET ZOOM - Volver al 100%
+ */
+resetZoom(): void {
+  this.applyZoom(100);
+}
+
+/**
+ * ✅ APLICAR ZOOM - Método principal que aplica la transformación
+ */
+private applyZoom(zoomLevel: number): void {
+  const oldZoom = this.zoomLevel;
+  const newZoom = zoomLevel;
+  
+  // Calcular el factor de escala
+  const oldScale = oldZoom / 100;
+  const newScale = newZoom / 100;
+  
+  // Obtener la posición actual del stage y el puntero
+  const stage = this.stage;
+  const stageContainer = stage.container();
+  const containerRect = stageContainer.getBoundingClientRect();
+  
+  // Calcular el centro del contenedor (punto de anclaje para el zoom)
+  const centerX = containerRect.width / 2;
+  const centerY = containerRect.height / 2;
+  
+  // Convertir las coordenadas del puntero (centro) a coordenadas del stage
+  const pointerPos = {
+    x: (centerX - stage.x()) / oldScale,
+    y: (centerY - stage.y()) / oldScale
+  };
+  
+  // Calcular la nueva posición para mantener el punto centrado
+  const newPos = {
+    x: centerX - pointerPos.x * newScale,
+    y: centerY - pointerPos.y * newScale
+  };
+  
+  // Aplicar la nueva escala y posición
+  stage.scale({ x: newScale, y: newScale });
+  stage.position(newPos);
+  
+  // Actualizar el nivel de zoom
+  this.zoomLevel = newZoom;
+  
+  // Re-dibujar todo
+  stage.batchDraw();
+  
+  console.log(`🔍 Zoom aplicado: ${newZoom}% - Contenido centrado`);
+}
+
+/**
+ * ✅ ZOOM TO FIT - Ajustar al área visible (como Figma)
+ */
+zoomToFit(): void {
+  // Calcular el zoom que hace que todo el contenido sea visible
+  const contentBounds = this.getContentBounds();
+  const stageWidth = this.stage.width();
+  const stageHeight = this.stage.height();
+  
+  const scaleX = stageWidth / contentBounds.width;
+  const scaleY = stageHeight / contentBounds.height;
+  const scale = Math.min(scaleX, scaleY) * 0.9; // 90% para dejar margen
+  
+  const zoomLevel = Math.max(this.minZoom, Math.min(this.maxZoom, Math.round(scale * 100)));
+  this.applyZoom(zoomLevel);
+}
+
+/**
+ * ✅ Obtener los límites de todo el contenido
+ */
+private getContentBounds(): { width: number; height: number } {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  this.mainLayer.children?.forEach((node: Konva.Node) => {
+    const pos = node.getClientRect();
+    minX = Math.min(minX, pos.x);
+    minY = Math.min(minY, pos.y);
+    maxX = Math.max(maxX, pos.x + pos.width);
+    maxY = Math.max(maxY, pos.y + pos.height);
+  });
+  
+  return {
+    width: maxX - minX,
+    height: maxY - minY
+  };
+}
+
+
+/**
+ * ✅ Zoom con rueda del mouse (Ctrl + Scroll)
+ */
+private setupMouseWheelZoom(): void {
+  this.stage.content.addEventListener('wheel', (event) => {
+    if (event.ctrlKey) {
+      event.preventDefault();
+      
+      const delta = event.deltaY > 0 ? -this.zoomStep : this.zoomStep;
+      const newZoom = this.zoomLevel + delta;
+      
+      if (newZoom >= this.minZoom && newZoom <= this.maxZoom) {
+        this.applyZoom(newZoom);
+      }
+    }
+  });
+}
+
+
 
 /**
  * ✅ NUEVO MÉTODO: Agregar imagen a grupo de manera asíncrona
@@ -2453,21 +4164,66 @@ private limpiarFondoSeguro(): void {
   }
 //################################################
 
-  renderTimelineEvents(): void {
+ renderTimelineEvents(): void {
   // Eliminar SOLO los grupos de eventos de línea de tiempo, nada más
   this.limpiarSoloGruposEventos();
   
+  
   // Dibujar línea base si es necesario
   if (!this.existeLineaTiempo()) {
-    this.drawTimelineBase();
+    this.renderTimelineBase();
   }
   
-  // Recrear eventos
+  // Recrear eventos con nuevas posiciones según el layout actual
   this.timelineEvents.forEach(event => {
     this.createTimelineEvent(event);
   });
   
   this.mainLayer.batchDraw();
+}
+
+
+
+
+/**
+ * ✅ NUEVO MÉTODO: Limpiar completamente todos los elementos de la línea de tiempo
+ */
+private limpiarCompletamenteLineaTiempo(): void {
+  // 1. Eliminar línea base
+  const oldLine = this.mainLayer.findOne('#timeline-base');
+  if (oldLine) {
+    oldLine.destroy();
+  }
+
+  // 2. Eliminar TODOS los marcadores de timeline
+  const markers = this.mainLayer.find('.timeline-marker');
+  markers.forEach(marker => {
+    marker.destroy();
+  });
+
+  // 3. Eliminar fondo de timeline si existe
+  const background = this.mainLayer.findOne('.timeline-background');
+  if (background) {
+    background.destroy();
+  }
+
+  // 4. Limpiar cualquier elemento residual relacionado con timeline
+  this.mainLayer.children?.forEach((child: Konva.Node) => {
+    const className = child.getClassName();
+    // Eliminar líneas que podrían ser de timeline (verificación más amplia)
+    if (className === 'Line' && child !== oldLine) {
+      const points = (child as Konva.Line).points();
+      // Si es una línea horizontal/vertical que podría ser timeline
+      if (points.length === 4) {
+        const [x1, y1, x2, y2] = points;
+        // Detectar líneas que podrían ser de timeline por su posición
+        if ((y1 === y2 && Math.abs(y1 - this.stage.height() / 2) < 10) || 
+            (x1 === x2 && Math.abs(x1 - this.stage.width() / 2) < 10)) {
+          child.destroy();
+        }
+      }
+    }
+  });
 }
 
 
@@ -2529,63 +4285,993 @@ private esElementoPreservar(node: Konva.Node): boolean {
   return esElementoDecorativo && !esEventoLineaTiempo;
 }
 
-  createTimelineEvent(event: TimelineEvent): void {
-  const x = this.calculateCanvasPosition(event.year);
-  const y = this.stage.height() / 2;
+  
+
+createTimelineEvent(event: TimelineEvent): void {
+  const position = this.calculateEventPosition(event.year);
+  
+  if (!position) return;
 
   const group = new Konva.Group({
-    x: x,
-    y: y,
+    x: position.x,
+    y: position.y,
     draggable: true,
-    dragBoundFunc: (pos) => {
-      if (this.autoUpdateYears) {
-        // Comportamiento original: solo movimiento horizontal en la línea de tiempo
-        return {
-          x: pos.x,
-          y: y
-        };
-      } else {
-        // Comportamiento nuevo: movimiento libre en todo el canvas
-        return {
-          x: pos.x,
-          y: pos.y
-        };
-      }
-    }
+    dragBoundFunc: (pos) => this.getDragBoundPosition(pos, position.y)
   });
 
-  if (event.image && event.image.trim() !== '') {
-    this.createEventWithImage(group, event);
+  // ✅ CORRECCIÓN: Verificar zonaDesign de manera segura
+  const zonaDesign = (event as any).zonaDesign;
+  
+  if (zonaDesign && zonaDesign.posicion && zonaDesign.elementos) {
+    console.log(`🎨 Aplicando diseño de plantilla para: ${event.title}`);
+    this.aplicarDiseñoPlantilla(group, event, zonaDesign);
   } else {
-    this.createEventWithoutImage(group, event);
+    console.log(`⚪ Usando diseño por defecto para: ${event.title}`);
+    // Usar diseño por defecto
+    this.applyEventDesign(group, event, this.currentEventDesign);
   }
 
-  const yearText = new Konva.Text({
-    x: -15,
-    y: 50,
-    text: event.year.toString(),
-    fontSize: 14,
-    fontFamily: 'Arial',
-    fill: '#2c3e50',
-    fontStyle: 'bold'
-  });
-  group.add(yearText);
+  // ✅ Marcar como evento de timeline
+  group.setAttr('timelineEvent', true);
+  group.setAttr('esEvento', true);
 
+  this.configurarInteracciones(group);
+  this.configurarEventosTimeline(group, event, position);
+  this.mainLayer.add(group);
+}
+
+private configurarEventosTimeline(group: Konva.Group, event: TimelineEvent,position:any): void {
   group.on('dblclick', (e) => {
     e.cancelBubble = true;
     this.editEvent(event);
   });
 
   group.on('dragend', () => {
-    this.updateEventYear(event, group.x());
+    this.updateEventPosition(event, group.x(), group.y());
   });
 
-  // Guardar referencia al grupo para poder actualizarlo después
   group.setAttr('timelineEvent', event);
-  group.setAttr('originalY', y);
-
-  this.mainLayer.add(group);
+  group.setAttr('originalPosition', position);
 }
+
+
+
+private aplicarDiseñoPlantilla(group: Konva.Group, event: TimelineEvent, zonaDesign: any): void {
+  console.log('📐 Diseño de zona:', zonaDesign);
+  
+  // ✅ PRIMERO: Crear contenedor si está configurado
+  if (zonaDesign.contenedor && zonaDesign.contenedor.visible !== false) {
+    const contenedor = new Konva.Rect({
+      x: 0, // ← RELATIVO AL GRUPO, no a zonaDesign.posicion
+      y: 0,
+      width: zonaDesign.posicion.anchoMaximo,
+      height: zonaDesign.posicion.altoMaximo,
+      fill: zonaDesign.contenedor.fill || 'transparent',
+      stroke: zonaDesign.contenedor.stroke || '#3498db',
+      strokeWidth: zonaDesign.contenedor.strokeWidth || 2,
+      cornerRadius: zonaDesign.contenedor.cornerRadius || 4
+    });
+    group.add(contenedor);
+  }
+
+  // ✅ SEGUNDO: Crear elementos de la plantilla CON LOS TEXTOS REALES
+  if (zonaDesign.elementos && Array.isArray(zonaDesign.elementos)) {
+    zonaDesign.elementos.forEach((elemento: any) => {
+      this.crearElementoDesdePlantilla(group, elemento, event);
+    });
+  } else {
+    console.warn('⚠️ No hay elementos en zonaDesign:', zonaDesign);
+  }
+
+  console.log(`✅ Diseño aplicado para: ${event.title}`);
+}
+
+
+
+
+
+private extraerTextoDeElementos(zona: any): { titulo: string, fecha: string, descripcion: string } {
+  const elementos = zona.elementos || [];
+  let titulo = `Evento ${zona.orden || 1}`;
+  let fecha = '';
+  let descripcion = '';
+
+  elementos.forEach((elemento: any) => {
+    if (elemento.configuracion && elemento.configuracion.texto) {
+      switch (elemento.tipo) {
+        case 'titulo':
+          titulo = elemento.configuracion.texto;
+          break;
+        case 'fecha':
+          fecha = elemento.configuracion.texto;
+          break;
+        case 'descripcion':
+          descripcion = elemento.configuracion.texto;
+          break;
+      }
+    }
+  });
+
+  return { titulo, fecha, descripcion };
+}
+
+
+private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: TimelineEvent): void {
+  let konvaElement: Konva.Shape | null = null;
+
+  // Determinar qué texto usar basado en el tipo y si es un placeholder
+  let textoParaMostrar = elemento.configuracion?.texto || '';
+
+  switch (elemento.tipo) {
+    case 'contenedor':
+      konvaElement = new Konva.Rect({
+        x: elemento.x, // ← Ya es relativo
+        y: elemento.y,
+        width: elemento.width,
+        height: elemento.height,
+        fill: elemento.configuracion.fill,
+        stroke: elemento.configuracion.stroke,
+        strokeWidth: elemento.configuracion.strokeWidth,
+        cornerRadius: elemento.configuracion.cornerRadius,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+      
+    case 'titulo':
+      textoParaMostrar = event.title || 'Nuevo Evento';
+      konvaElement = new Konva.Text({
+        x: elemento.x,
+        y: elemento.y,
+        text: textoParaMostrar,
+        fontSize: elemento.configuracion.fontSize,
+        fontFamily: elemento.configuracion.fontFamily,
+        fill: elemento.configuracion.color,
+        fontStyle: elemento.configuracion.fontWeight,
+        align: elemento.configuracion.textAlign as any,
+        width: elemento.width,
+        height: elemento.height,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+      
+    case 'fecha':
+      textoParaMostrar = event.year.toString();
+      konvaElement = new Konva.Text({
+        x: elemento.x,
+        y: elemento.y,
+        text: textoParaMostrar,
+        fontSize: elemento.configuracion.fontSize,
+        fontFamily: elemento.configuracion.fontFamily,
+        fill: elemento.configuracion.color,
+        fontStyle: elemento.configuracion.fontWeight,
+        align: elemento.configuracion.textAlign as any,
+        width: elemento.width,
+        height: elemento.height,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+      
+    case 'descripcion':
+      textoParaMostrar = event.description || '';
+      konvaElement = new Konva.Text({
+        x: elemento.x,
+        y: elemento.y,
+        text: textoParaMostrar,
+        fontSize: elemento.configuracion.fontSize,
+        fontFamily: elemento.configuracion.fontFamily,
+        fill: elemento.configuracion.color,
+        align: elemento.configuracion.textAlign as any,
+        width: elemento.width,
+        height: elemento.height,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+      
+    case 'personaje':
+      textoParaMostrar = event.person || '';
+      konvaElement = new Konva.Text({
+        x: elemento.x,
+        y: elemento.y,
+        text: textoParaMostrar,
+        fontSize: elemento.configuracion.fontSize,
+        fontFamily: elemento.configuracion.fontFamily,
+        fill: elemento.configuracion.color,
+        align: elemento.configuracion.textAlign as any,
+        width: elemento.width,
+        height: elemento.height,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+      
+    case 'link':
+      textoParaMostrar = this.obtenerTextoParaEnlace(elemento, event);
+      konvaElement = this.crearElementoLink(elemento, textoParaMostrar, event);
+      break;
+      
+    case 'forma':
+      konvaElement = this.crearFormaDesdePlantilla(elemento);
+      break;
+  }
+
+  if (konvaElement) {
+    konvaElement.setAttr('elementoTipo', elemento.tipo);
+    konvaElement.setAttr('elementoId', elemento.id);
+    konvaElement.setAttr('textoOriginal', elemento.configuracion?.texto);
+
+    if (elemento.tipo === 'link' && event.link) {
+      konvaElement.setAttr('linkUrl', event.link);
+    }
+
+    group.add(konvaElement);
+  }
+}
+
+
+
+private crearFormaDesdePlantilla(elemento: any): Konva.Shape | null {
+  const forma = elemento.configuracion.forma || 'rectangulo';
+  
+  switch (forma) {
+    case 'circulo':
+      return new Konva.Circle({
+        x: elemento.x + elemento.width / 2,
+        y: elemento.y + elemento.height / 2,
+        radius: Math.min(elemento.width, elemento.height) / 2,
+        fill: elemento.configuracion.fill,
+        stroke: elemento.configuracion.stroke,
+        strokeWidth: elemento.configuracion.strokeWidth,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      
+    case 'rectangulo':
+      return new Konva.Rect({
+        x: elemento.x,
+        y: elemento.y,
+        width: elemento.width,
+        height: elemento.height,
+        fill: elemento.configuracion.fill,
+        stroke: elemento.configuracion.stroke,
+        strokeWidth: elemento.configuracion.strokeWidth,
+        cornerRadius: elemento.configuracion.cornerRadius || 0,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      
+    case 'estrella':
+      return new Konva.Star({
+        x: elemento.x + elemento.width / 2,
+        y: elemento.y + elemento.height / 2,
+        numPoints: 5,
+        innerRadius: Math.min(elemento.width, elemento.height) * 0.4,
+        outerRadius: Math.min(elemento.width, elemento.height) / 2,
+        fill: elemento.configuracion.fill,
+        stroke: elemento.configuracion.stroke,
+        strokeWidth: elemento.configuracion.strokeWidth,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      
+    case 'rombo':
+      const points = [
+        elemento.x + elemento.width / 2, elemento.y, // top
+        elemento.x + elemento.width, elemento.y + elemento.height / 2, // right
+        elemento.x + elemento.width / 2, elemento.y + elemento.height, // bottom
+        elemento.x, elemento.y + elemento.height / 2 // left
+      ];
+      return new Konva.Line({
+        points: points,
+        fill: elemento.configuracion.fill,
+        stroke: elemento.configuracion.stroke,
+        strokeWidth: elemento.configuracion.strokeWidth,
+        closed: true,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      
+    default:
+      return null;
+  }
+}
+private crearElementoLink(elemento: any, texto: string, event: TimelineEvent): Konva.Text {
+  const tieneEnlace = !!event.link;
+  const color = elemento.configuracion?.color || (tieneEnlace ? '#3498db' : '#95a5a6');
+  
+  const textElement = new Konva.Text({
+    x: elemento.x,
+    y: elemento.y,
+    text: texto,
+    fontSize: elemento.configuracion?.fontSize || 11,
+    fontFamily: elemento.configuracion?.fontFamily || 'Arial',
+    fill: color,
+    align: elemento.configuracion?.textAlign || 'left',
+    width: elemento.width,
+    height: elemento.height,
+    textDecoration: tieneEnlace ? 'underline' : 'none', // ← Subrayado solo si hay enlace
+    rotation: elemento.configuracion?.rotation || 0,
+    visible: elemento.visible !== false
+  });
+
+  // Configurar interactividad para enlaces
+  if (tieneEnlace) {
+    textElement.on('click', (e) => {
+      e.cancelBubble = true;
+      this.abrirEnlace(event.link!);
+    });
+
+    textElement.on('mouseenter', () => {
+      this.stage.container().style.cursor = 'pointer';
+      textElement.fill('#2980b9'); // Color más oscuro al hover
+      this.mainLayer.batchDraw();
+    });
+
+    textElement.on('mouseleave', () => {
+      this.stage.container().style.cursor = 'default';
+      textElement.fill(color);
+      this.mainLayer.batchDraw();
+    });
+  }
+
+  return textElement;
+}
+
+private obtenerTextoParaEnlace(elemento: any, event: TimelineEvent): string {
+  // Si hay un enlace en el evento, usar texto específico
+  if (event.link) {
+    return elemento.configuracion?.textoLink || 'Ver más' || 'Ver más';
+  }
+  
+  // Si no hay enlace, mostrar texto indicativo
+  return elemento.configuracion?.texto || 'Agregar enlace...';
+}
+
+private abrirEnlace(url: string): void {
+  if (!url) return;
+  
+  // Asegurar que la URL tenga protocolo
+  let urlCompleta = url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    urlCompleta = 'https://' + url;
+  }
+  
+  // Abrir en nueva pestaña
+  window.open(urlCompleta, '_blank');
+}
+
+private crearTextoDesdePlantilla(elemento: any, texto: string): Konva.Text {
+  return new Konva.Text({
+    x: elemento.x,
+    y: elemento.y,
+    text: texto || elemento.configuracion.texto,
+    fontSize: elemento.configuracion.fontSize,
+    fontFamily: elemento.configuracion.fontFamily,
+    fill: elemento.configuracion.color,
+    fontStyle: elemento.configuracion.fontWeight,
+    align: elemento.configuracion.textAlign as any,
+    width: elemento.width,
+    height: elemento.height,
+    rotation: elemento.configuracion.rotation || 0,
+    visible: elemento.visible
+  });
+}
+
+private crearContenedorDesdePlantilla(elemento: any): Konva.Rect {
+  return new Konva.Rect({
+    x: elemento.x,
+    y: elemento.y,
+    width: elemento.width,
+    height: elemento.height,
+    fill: elemento.configuracion.fill,
+    stroke: elemento.configuracion.stroke,
+    strokeWidth: elemento.configuracion.strokeWidth,
+    cornerRadius: elemento.configuracion.cornerRadius,
+    rotation: elemento.configuracion.rotation || 0,
+    visible: elemento.visible
+  });
+}
+
+private updateEventPosition(event: TimelineEvent, x: number, y: number): void {
+  if (this.autoUpdateYears) {
+    const newYear = this.calculateYearFromPosition(x, y);
+    event.year = newYear;
+    this.timelineEvents.sort((a, b) => a.year - b.year);
+    this.renderTimelineEvents();
+  } else {
+    console.log(`Evento "${event.title}" mantiene año ${event.year} (movimiento libre)`);
+    this.actualizarPosicionVisualEvento(event);
+  }
+}
+
+
+private calculateEventPosition(year: number): { x: number; y: number } | null {
+  const range = this.maxYear - this.minYear;
+  const progress = (year - this.minYear) / range;
+  const layout = this.currentTimelineDesign.layout;
+
+  switch (layout.type) {
+    case 'horizontal':
+      return this.calculateHorizontalPosition(progress);
+    
+    case 'vertical':
+      return this.calculateVerticalPosition(progress);
+    
+    case 'curve':
+      return this.calculateCurvePosition(progress);
+    
+    case 'wave':
+      return this.calculateWavePosition(progress);
+    
+    case 'zigzag':
+      return this.calculateZigzagPosition(progress);
+    
+    case 'spiral':
+      return this.calculateSpiralPosition(progress);
+    case 's-curve': // ✅ NUEVO
+      return this.calculateSCurvePosition(progress);
+    
+    case 'custom': // ✅ NUEVO
+      return this.calculateCustomPosition(progress);
+    
+    default:
+      return this.calculateHorizontalPosition(progress);
+  }
+}
+
+/**
+ * ✅ NUEVO: Calcular posición en S-Curve
+ */
+private calculateSCurvePosition(progress: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  
+  const centerX = (layout.positionX || this.stage.width() / 2) + 100;
+  const centerY = layout.positionY || this.stage.height() / 2;
+  const curveHeight = (layout.intensitycurva || 100) * 2;
+  
+  const totalWidth = layout.anchoTotal || 1110;
+  const halfWidth = totalWidth / 2;
+  const startX = centerX - halfWidth;
+
+  // Dividir la S-curve en 3 segmentos
+  let x: number, y: number;
+
+  if (progress < 0.33) {
+    // Primer segmento: línea superior horizontal
+    const segmentProgress = progress / 0.33;
+    x = startX + (totalWidth * 0.7) * segmentProgress;
+    y = centerY - curveHeight;
+  } else if (progress < 0.66) {
+    // Segundo segmento: curva descendente + línea media
+    const segmentProgress = (progress - 0.33) / 0.33;
+    x = startX + totalWidth * 0.7 - (totalWidth * 0.65) * segmentProgress;
+    y = centerY - curveHeight + (curveHeight * segmentProgress);
+  } else {
+    // Tercer segmento: curva ascendente + línea inferior
+    const segmentProgress = (progress - 0.66) / 0.34;
+    x = startX + totalWidth * 0.05 + (totalWidth * 0.72) * segmentProgress;
+    y = centerY + curveHeight;
+  }
+
+  return { x, y };
+}
+
+/**
+ * ✅ NUEVO: Calcular posición en línea personalizada
+ */
+private calculateCustomPosition(progress: number): { x: number; y: number } {
+  // Para líneas personalizadas, usar distribución horizontal simple
+  const x = 50 + (progress * (this.stage.width() - 100));
+  const y = this.stage.height() / 2;
+  return { x, y };
+}
+
+
+/**
+ * ✅ NUEVO: Convertir configuración de línea de tiempo de Admin a formato de Usuario
+ */
+private convertirLineaTiempoConfig(lineaConfig: any): void {
+  if (!lineaConfig || !lineaConfig.tipo) {
+    console.warn('⚠️ Configuración de línea inválida:', lineaConfig);
+    return;
+  }
+
+  console.log('🔄 Convirtiendo configuración de línea:', lineaConfig);
+
+  // ✅ MAPEO CORREGIDO: Convertir tipos del JSON a tipos del sistema
+  const tipoMapeado = this.mapearTipoLinea(lineaConfig.tipo);
+  
+  if (!tipoMapeado) {
+    console.error('❌ Tipo de línea no válido:', lineaConfig.tipo);
+    return;
+  }
+/*type TimelineLayoutType = 
+  | "horizontal"
+  | "vertical"
+  | "curve"
+  | "wave"
+  | "zigzag"
+  | "spiral"
+  | "s-curve"
+  | "custom";*/
+
+  // Crear un TimelineDesign temporal basado en la configuración
+  const customDesign: TimelineDesign = {
+    id: 'custom-from-json',
+    name: `Diseño Importado - ${lineaConfig.tipo}`,
+    description: 'Diseño cargado desde JSON importado',
+    layout: {
+      type: tipoMapeado ,
+      orientation: this.calcularOrientacion(lineaConfig),
+      positionX: lineaConfig.positionX || this.stage.width() / 2,
+      positionY: lineaConfig.positionY || this.stage.height() / 2,
+      intensity: lineaConfig.intensity || 20,
+      intensitycurva: lineaConfig.intensitycurva || 100,
+      anchoTotal: lineaConfig.anchoTotal || 1110,
+      turns: lineaConfig.turns || 3,
+      amplitude: lineaConfig.intensity || 30, // Para wave
+      frequency: 0.02,
+      segments: 20,
+      curvature: 0.3 // Para curvas
+    },
+    lineStyle: {
+      stroke: lineaConfig.estilo?.stroke || '#070707ff',
+      strokeWidth: lineaConfig.estilo?.strokeWidth || 5,
+      strokeStyle: 'solid',
+      lineCap: (lineaConfig.estilo?.lineCap as any) || 'round',
+      dashArray: lineaConfig.estilo?.dash,
+      shadow: {
+        color: 'rgba(0,0,0,0.3)',
+        blur: 8,
+        offset: { x: 0, y: 3 },
+        opacity: 0.5
+      }
+    },
+    markers: [
+      {
+        type: 'year',
+        position: 'both',
+        interval: 10,
+        style: {
+          size: 4,
+          color: lineaConfig.estilo?.stroke || '#070707ff',
+          shape: 'line',
+          label: {
+            show: true,
+            fontSize: 12,
+            fontFamily: 'Arial',
+            color: '#2c3e50',
+            position: 'outside'
+          }
+        }
+      }
+    ]
+  };
+
+  // Aplicar el diseño personalizado
+  this.currentTimelineDesign = customDesign;
+  this.selectedTimelineDesignId = 'custom-from-json';
+  
+  console.log('✅ Configuración de línea convertida:', {
+    tipoOriginal: lineaConfig.tipo,
+    tipoMapeado: customDesign.layout.type,
+    positionX: customDesign.layout.positionX,
+    positionY: customDesign.layout.positionY,
+    intensity: customDesign.layout.intensity
+  });
+}
+
+
+private mapearTipoLinea(
+  tipoJSON: string
+): "horizontal" | "vertical" | "curve" | "wave" | "zigzag" | "spiral" | "s-curve" | "custom" {
+  const mapeo = {
+    wave: "wave",
+    horizontal: "horizontal",
+    vertical: "vertical",
+    curve: "curve",
+    zigzag: "zigzag",
+    spiral: "spiral",
+    "s-curve": "s-curve",
+    custom: "custom"
+  } as const;
+
+  return (mapeo[tipoJSON as keyof typeof mapeo] || "horizontal");
+}
+
+/**
+ * ✅ Calcular orientación basada en posición
+ */
+private calcularOrientacion(lineaConfig: any): "top" | "bottom" | "center" | "left" | "right" {
+  const posY = lineaConfig.positionY || this.stage.height() / 2;
+  const posX = lineaConfig.positionX || this.stage.width() / 2;
+  
+  // Para líneas horizontales
+  if (lineaConfig.tipo === 'horizontal' || lineaConfig.tipo === 'wave' || lineaConfig.tipo === 'zigzag') {
+    if (posY < this.stage.height() * 0.33) return 'top';
+    if (posY > this.stage.height() * 0.66) return 'bottom';
+    return 'center';
+  }
+  
+  // Para líneas verticales
+  if (lineaConfig.tipo === 'vertical') {
+    if (posX < this.stage.width() * 0.33) return 'left';
+    if (posX > this.stage.width() * 0.66) return 'right';
+    return 'center';
+  }
+  
+  return 'center';
+}
+private calculateHorizontalPosition(progress: number): { x: number; y: number } {
+  const x = 50 + (progress * (this.stage.width() - 100));
+  const y = this.getTimelineYPosition();
+  return { x, y };
+}
+
+private calculateVerticalPosition(progress: number): { x: number; y: number } {
+  const x = this.getTimelineXPosition();
+  const y = 100 + (progress * (this.stage.height() - 200));
+  return { x, y };
+}
+
+private calculateCurvePosition(progress: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  const curvature = layout.curvature || 0.3;
+
+  const startX = 50;
+  const endX = this.stage.width() - 50;
+  const centerY = this.stage.height() / 2;
+  const controlY = centerY + (this.stage.height() * curvature);
+
+  // Calcular posición en curva Bézier
+  const t = progress;
+  const x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * ((startX + endX) / 2) + t * t * endX;
+  const y = (1 - t) * (1 - t) * centerY + 2 * (1 - t) * t * controlY + t * t * centerY;
+
+  return { x, y };
+}
+
+private calculateWavePosition(progress: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  const amplitude = layout.amplitude || 30;
+  const frequency = layout.frequency || 0.02;
+
+  const centerY = this.stage.height() / 2;
+  const x = 50 + (progress * (this.stage.width() - 100));
+  const y = centerY + Math.sin(x * frequency) * amplitude;
+
+  return { x, y };
+}
+
+private calculateZigzagPosition(progress: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  const amplitude = layout.amplitude || 40;
+  const segments = layout.segments || 20;
+
+  const centerY = this.stage.height() / 2;
+  const segmentIndex = Math.floor(progress * segments);
+  const segmentProgress = (progress * segments) - segmentIndex;
+
+  const x = 50 + (progress * (this.stage.width() - 100));
+  const baseY = segmentIndex % 2 === 0 ? centerY - amplitude : centerY + amplitude;
+  const nextY = (segmentIndex + 1) % 2 === 0 ? centerY - amplitude : centerY + amplitude;
+  const y = baseY + (segmentProgress * (nextY - baseY));
+
+  return { x, y };
+}
+
+private calculateSpiralPosition(progress: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  const segments = layout.segments || 36;
+
+  const centerX = this.stage.width() / 2;
+  const centerY = this.stage.height() / 2;
+  const maxRadius = Math.min(centerX, centerY) - 50;
+
+  const angle = progress * Math.PI * 4; // 2 vueltas completas
+  const radius = progress * maxRadius;
+
+  const x = centerX + Math.cos(angle) * radius;
+  const y = centerY + Math.sin(angle) * radius;
+
+  return { x, y };
+}
+
+private getDragBoundPosition(pos: { x: number; y: number }, originalY: number): { x: number; y: number } {
+  const layout = this.currentTimelineDesign.layout;
+  
+  switch (layout.type) {
+    case 'horizontal':
+      // Solo movimiento horizontal en la línea
+      return { x: pos.x, y: originalY };
+    
+    case 'vertical':
+      // Solo movimiento vertical en la línea
+      return { x: originalY, y: pos.y }; // Nota: originalY aquí es realmente la x original
+    
+    case 'curve':
+    case 'wave':
+    case 'zigzag':
+      // Para líneas curvas, permitir movimiento más libre pero mantener proximidad a la línea
+      return this.getCurvedDragBound(pos, originalY);
+    
+    case 'spiral':
+      // Para espiral, movimiento más libre
+      return { x: pos.x, y: pos.y };
+    
+    default:
+      return { x: pos.x, y: originalY };
+  }
+}
+
+private getCurvedDragBound(pos: { x: number; y: number }, originalY: number): { x: number; y: number } {
+  // Para líneas curvas, permitir movimiento pero con restricciones suaves
+  const maxDeviation = 50; // Máxima desviación permitida de la línea original
+  
+  // Calcular la Y esperada para esta X en la línea
+  const expectedY = this.calculateExpectedY(pos.x);
+  
+  if (Math.abs(pos.y - expectedY) > maxDeviation) {
+    // Si se desvía demasiado, corregir la posición
+    const direction = pos.y > expectedY ? 1 : -1;
+    return { x: pos.x, y: expectedY + (maxDeviation * direction) };
+  }
+  
+  return { x: pos.x, y: pos.y };
+}
+private calculateExpectedY(x: number): number {
+  const layout = this.currentTimelineDesign.layout;
+  const progress = (x - 50) / (this.stage.width() - 100);
+  
+  switch (layout.type) {
+    case 'curve':
+      return this.calculateCurvePosition(progress).y;
+    case 'wave':
+      return this.calculateWavePosition(progress).y;
+    case 'zigzag':
+      return this.calculateZigzagPosition(progress).y;
+    default:
+      return this.stage.height() / 2;
+  }
+}
+
+
+
+
+
+   private applyEventDesign(group: Konva.Group, event: TimelineEvent, design: EventDesign): void {
+    design.elements.forEach(element => {
+      switch (element.type) {
+        case 'connector':
+          this.createConnector(group, element, design.styles);
+          break;
+        case 'image-container':
+          this.createImageContainer(group, element);
+          break;
+        case 'image':
+          if (event.image) {
+            this.createImageElement(group, element, event.image);
+          }
+          break;
+        case 'title-box':
+          this.createTitleBox(group, element);
+          break;
+        case 'title-text':
+          this.createTextElement(group, element, event.title, 'title');
+          break;
+        case 'year-text':
+          this.createTextElement(group, element, event.year.toString(), 'year');
+          break;
+        case 'description-text':
+          if (event.description) {
+            this.createTextElement(group, element, event.description, 'description');
+          }
+          break;
+      }
+    });
+    if (event.link) {
+    this.agregarElementoLinkAlEvento(group, event);
+  }
+  }
+
+
+  private createConnector(group: Konva.Group, element: EventElement, styles: EventStyles): void {
+    const connector = new Konva.Line({
+      points: [element.position.x, element.position.y, element.position.x, element.position.y + 110],
+      stroke: element.styles.stroke,
+      strokeWidth: element.styles.strokeWidth,
+      dash: this.getDashStyle(styles.connectorStyle)
+    });
+    group.add(connector);
+  }
+
+  private createImageContainer(group: Konva.Group, element: EventElement): void {
+  if (!element.size) return;
+
+  let container: Konva.Shape;
+  
+  switch (element.size.type) {
+    case 'circle':
+      container = new Konva.Circle({
+        x: element.position.x,
+        y: element.position.y,
+        radius: element.size.radius,
+        fill: element.styles.fill,
+        stroke: element.styles.stroke,
+        strokeWidth: element.styles.strokeWidth,
+        shadowColor: element.styles.shadow?.color,
+        shadowBlur: element.styles.shadow?.blur,
+        shadowOffset: element.styles.shadow?.offset,
+        shadowOpacity: element.styles.shadow?.opacity
+      });
+      break;
+    
+    case 'rectangle':
+      container = new Konva.Rect({
+        x: element.position.x - (element.size.width / 2),
+        y: element.position.y - (element.size.height / 2),
+        width: element.size.width,
+        height: element.size.height,
+        fill: element.styles.fill,
+        stroke: element.styles.stroke,
+        strokeWidth: element.styles.strokeWidth,
+        cornerRadius: element.size.cornerRadius || element.styles.cornerRadius,
+        shadowColor: element.styles.shadow?.color,
+        shadowBlur: element.styles.shadow?.blur,
+        shadowOffset: element.styles.shadow?.offset,
+        shadowOpacity: element.styles.shadow?.opacity
+      });
+      break;
+    
+    case 'square':
+      container = new Konva.Rect({
+        x: element.position.x - (element.size.size / 2),
+        y: element.position.y - (element.size.size / 2),
+        width: element.size.size,
+        height: element.size.size,
+        fill: element.styles.fill,
+        stroke: element.styles.stroke,
+        strokeWidth: element.styles.strokeWidth,
+        cornerRadius: element.size.cornerRadius || element.styles.cornerRadius,
+        shadowColor: element.styles.shadow?.color,
+        shadowBlur: element.styles.shadow?.blur,
+        shadowOffset: element.styles.shadow?.offset,
+        shadowOpacity: element.styles.shadow?.opacity
+      });
+      break;
+    
+    default:
+      return;
+  }
+  
+  group.add(container);
+}
+
+  private createImageElement(group: Konva.Group, element: EventElement, imageUrl: string): void {
+  if (!element.size) return;
+
+  const imageObj = new Image();
+  imageObj.onload = () => {
+    let width = 0;
+    let height = 0;
+    let cornerRadius = element.styles.cornerRadius;
+
+    // Determinar dimensiones según el tipo de size
+   /* switch (element.size.type) {
+      case 'rectangle':
+        width = element.size.width;
+        height = element.size.height;
+        cornerRadius = element.size.cornerRadius || cornerRadius;
+        break;
+      case 'square':
+        width = element.size.size;
+        height = element.size.size;
+        cornerRadius = element.size.cornerRadius || cornerRadius;
+        break;
+      case 'circle':
+        width = element.size.radius * 2;
+        height = element.size.radius * 2;
+        cornerRadius = element.size.radius; // Para círculo completo
+        break;
+    }*/
+
+    const image = new Konva.Image({
+      x: element.position.x,
+      y: element.position.y,
+      image: imageObj,
+      width: width,
+      height: height,
+      cornerRadius: cornerRadius,
+      perfectDrawEnabled: false
+    });
+    group.add(image);
+    group.getLayer()?.batchDraw();
+  };
+  imageObj.src = imageUrl;
+}
+
+
+ getLayoutTypeName(type: string): string {
+    const names: { [key: string]: string } = {
+      'horizontal': 'Horizontal',
+      'vertical': 'Vertical', 
+      'curve': 'Curva',
+      'wave': 'Ondulada',
+      'zigzag': 'Zigzag',
+      'spiral': 'Espiral'
+    };
+    return names[type] || type;
+  }
+
+  private createTitleBox(group: Konva.Group, element: EventElement): void {
+  if (!element.size || element.size.type !== 'rectangle') return;
+
+  const box = new Konva.Rect({
+    x: element.position.x,
+    y: element.position.y,
+    width: element.size.width,
+    height: element.size.height,
+    fill: element.styles.fill,
+    stroke: element.styles.stroke,
+    strokeWidth: element.styles.strokeWidth,
+    cornerRadius: element.size.cornerRadius || element.styles.cornerRadius,
+    shadowColor: element.styles.shadow?.color,
+    shadowBlur: element.styles.shadow?.blur,
+    shadowOffset: element.styles.shadow?.offset,
+    shadowOpacity: element.styles.shadow?.opacity
+  });
+  group.add(box);
+}
+  private createTextElement(group: Konva.Group, element: EventElement, text: string, type: 'title' | 'year' | 'description'): void {
+  const truncatedText = type === 'title' ? this.truncateText(text, element.content?.maxLength || 80) : text;
+  
+  const textConfig: any = {
+    x: element.position.x,
+    y: element.position.y,
+    text: truncatedText,
+    fontSize: element.styles.fontSize,
+    fontFamily: element.styles.fontFamily,
+    fill: element.styles.fill,
+    fontStyle: element.styles.fontStyle,
+    align: element.styles.textAlign as any
+  };
+
+  // Solo agregar width y height si el elemento tiene size definido y es rectangle
+  if (element.size && element.size.type === 'rectangle') {
+    textConfig.width = element.size.width;
+    textConfig.height = element.size.height;
+  }
+
+  const textElement = new Konva.Text(textConfig);
+  group.add(textElement);
+}
+
+  private getDashStyle(style: string): number[] {
+    switch (style) {
+      case 'dashed': return [5, 5];
+      case 'dotted': return [2, 5];
+      default: return []; // solid
+    }
+  }
+
+  // Método para cambiar el diseño de eventos
+   changeEventDesign(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const designId = selectElement.value;
+    
+    if (designId) {
+      const design = this.eventDesignService.getEventDesignById(designId);
+      if (design) {
+        this.currentEventDesign = design;
+        this.renderTimelineEvents();
+        console.log('✅ Diseño cambiado a:', design.name);
+      }
+    }
+  }
+
 
 //======= Evento CON IMAGEN ========
   createEventWithImage(group: Konva.Group, event: TimelineEvent): void {
@@ -2656,7 +5342,50 @@ private esElementoPreservar(node: Konva.Node): boolean {
       fontStyle: 'bold'
     });
     group.add(titleText);
+
+    if(event.link){
+      this.agregarElementoLinkAlEvento(group,event);
+
+    }
   }
+
+
+  private agregarElementoLinkAlEvento(group: Konva.Group, event: TimelineEvent): void {
+  const linkText = new Konva.Text({
+    x: -45,
+    y: 125, // Posición debajo del título
+    text: '🔗 Ver más',
+    fontSize: 10,
+    fontFamily: 'Arial',
+    fill: '#3498db',
+    width: 90,
+    align: 'center',
+    textDecoration: 'underline'
+  });
+
+  // Configurar interactividad del enlace
+  linkText.on('click', (e) => {
+    e.cancelBubble = true;
+    this.abrirEnlace(event.link!);
+  });
+
+  linkText.on('mouseenter', () => {
+    this.stage.container().style.cursor = 'pointer';
+    linkText.fill('#2980b9'); // Color más oscuro al hover
+    group.getLayer()?.batchDraw();
+  });
+
+  linkText.on('mouseleave', () => {
+    this.stage.container().style.cursor = 'default';
+    linkText.fill('#3498db');
+    group.getLayer()?.batchDraw();
+  });
+
+  // Guardar referencia al enlace
+  linkText.setAttr('linkUrl', event.link);
+  
+  group.add(linkText);
+}
 
   //======= Evento SIN IMAGEN ========
 
@@ -2696,8 +5425,15 @@ private esElementoPreservar(node: Konva.Node): boolean {
       fontStyle: 'bold'
     });
     group.add(titleText);
+
+
+    if (event.link) {
+    this.agregarElementoLinkAlEvento(group, event);
+  }
   }
 
+
+  
 
 
   // ========== MÉTODOS DE EVENTOS ==========
@@ -2719,9 +5455,13 @@ private esElementoPreservar(node: Konva.Node): boolean {
       title: '',
       person: '',
       description: '',
-      image: ''
+      image: '',
+      link: ''
     };
   }
+
+
+  
 
   updateEvent(): void {
     if (!this.editedEvent.year || !this.editedEvent.title) {
@@ -2811,10 +5551,10 @@ private esElementoPreservar(node: Konva.Node): boolean {
     return text.substring(0, 10) + '...';
   }
 
- updateEventYear(event: TimelineEvent, xPosition: number): void {
+ updateEventYear(event: TimelineEvent, xPosition: number,yPosition:number): void {
   if (this.autoUpdateYears) {
     // Comportamiento original: actualizar año basado en posición X
-    const newYear = this.calculateYearFromPosition(xPosition);
+    const newYear = this.calculateYearFromPosition(xPosition,yPosition);
     event.year = newYear;
     this.timelineEvents.sort((a, b) => a.year - b.year);
     this.renderTimelineEvents();
@@ -2883,12 +5623,44 @@ compartirProyecto() {
   alert("🔗 Enlace copiado al portapapeles");
 }
 
-  calculateYearFromPosition(x: number): number {
-    const effectiveWidth = this.stage.width() - 100;
-    const normalizedX = x - 50;
-    const percentage = normalizedX / effectiveWidth;
-    return Math.round(this.minYear + percentage * (this.maxYear - this.minYear));
+ private calculateYearFromPosition(x: number, y: number): number {
+  const layout = this.currentTimelineDesign.layout;
+  const range = this.maxYear - this.minYear;
+  
+  switch (layout.type) {
+    case 'horizontal':
+      const effectiveWidth = this.stage.width() - 100;
+      const normalizedX = x - 50;
+      const percentage = normalizedX / effectiveWidth;
+      return Math.round(this.minYear + percentage * range);
+    
+    case 'vertical':
+      const effectiveHeight = this.stage.height() - 200;
+      const normalizedY = y - 100;
+      const percentageY = normalizedY / effectiveHeight;
+      return Math.round(this.minYear + percentageY * range);
+    
+    case 'curve':
+    case 'wave':
+    case 'zigzag':
+      // Para líneas curvas, usar la posición X como referencia principal
+      const progressX = (x - 50) / (this.stage.width() - 100);
+      return Math.round(this.minYear + progressX * range);
+    
+    case 'spiral':
+      // Para espiral, calcular basado en el ángulo
+      const centerX = this.stage.width() / 2;
+      const centerY = this.stage.height() / 2;
+      const angle = Math.atan2(y - centerY, x - centerX);
+      // Normalizar ángulo de 0 a 1 (0 a 2π)
+      let normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
+      return Math.round(this.minYear + normalizedAngle * range);
+    
+    default:
+      const defaultProgress = (x - 50) / (this.stage.width() - 100);
+      return Math.round(this.minYear + defaultProgress * range);
   }
+}
 
   openEventModal(): void {
     this.showEventModal = true;
@@ -2905,22 +5677,67 @@ compartirProyecto() {
       title: '',
       person: '',
       description: '',
-      image: ''
+      image: '',
+      link: '' 
     };
   }
 
   addEventToTimeline(): void {
-    if (!this.newEvent.year || !this.newEvent.title) {
-      alert('Por favor, complete al menos el año y el título del evento.');
-      return;
-    }
-
-    this.timelineEvents.push({...this.newEvent});
-    this.timelineEvents.sort((a, b) => a.year - b.year);
-    this.calculateYearRange();
-    this.renderTimelineEvents();
-    this.closeEventModal();
+  if (!this.newEvent.year || !this.newEvent.title) {
+    alert('Por favor, complete al menos el año y el título del evento.');
+    return;
   }
+
+  // Si hay más eventos que zonas en la plantilla, duplicar el diseño
+  if (this.timelineEvents.length >= this.obtenerTotalZonasPlantilla()) {
+    this.duplicarDiseñoParaNuevoEvento();
+  }
+
+  this.timelineEvents.push({...this.newEvent});
+  this.timelineEvents.sort((a, b) => a.year - b.year);
+  this.calculateYearRange();
+  this.renderTimelineEvents();
+  this.closeEventModal();
+}
+
+private obtenerTotalZonasPlantilla(): number {
+  // Esto debería venir de tu plantilla cargada
+  return 2; // Por ejemplo, para la plantilla de 2 eventos
+}
+
+
+private nuevoEventoDesign: any = null;
+
+private duplicarDiseñoParaNuevoEvento(): void {
+  // Obtener el diseño de la última zona para duplicarlo
+  const ultimoEvento = this.timelineEvents[this.timelineEvents.length - 1];
+  
+  if (ultimoEvento && (ultimoEvento as any)['zonaDesign']) {
+    const zonaDesign = (ultimoEvento as any)['zonaDesign'];
+    const nuevoOrden = this.timelineEvents.length + 1;
+    
+    // Crear nueva zona basada en la última
+    const nuevaZona = {
+      ...zonaDesign,
+      id: `zone-${nuevoOrden}`,
+      nombre: `Evento ${nuevoOrden}`,
+      orden: nuevoOrden,
+      posicion: {
+        ...zonaDesign.posicion, // ← CORREGIDO: separado correctamente
+        x: this.calcularNuevaPosicionX(nuevoOrden)
+      }
+    };
+    
+    // Asignar al nuevo evento (se asignará cuando se cree)
+    this.nuevoEventoDesign = nuevaZona;
+  }
+}
+
+private calcularNuevaPosicionX(orden: number): number {
+  // Lógica para posicionar nuevos eventos a la derecha
+  const espacioEntreEventos = 100;
+  return 50 + ((orden - 1) * espacioEntreEventos);
+}
 
   addHistoricalEvent(year: number, person: string): void {
     this.newEvent.year = year;
@@ -3379,6 +6196,7 @@ private exportarComoJPEG(): void {
 
    onResize(): void {
     if (this.stage) {
+      this.renderTimelineBase();
       if (this.isPresentacionMode) {
         // En modo presentación, usar toda la pantalla
         this.stage.width(window.innerWidth);

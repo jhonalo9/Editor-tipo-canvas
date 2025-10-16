@@ -1,0 +1,818 @@
+<!-- src/app/features/admin/template-editor/template-editor.component.html -->
+
+<div class="admin-editor-container">
+  
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <h2>🎨 Editor de Plantillas - Admin</h2>
+    </div>
+    
+    <div class="top-actions">
+      <button class="btn btn-secondary" (click)="newTemplate()">
+        <i class="fas fa-file"></i> Nueva
+      </button>
+      
+      <button class="btn btn-primary" (click)="saveTemplate()" [disabled]="isSaving">
+        <i class="fas fa-save"></i> {{ isSaving ? 'Guardando...' : 'Guardar' }}
+      </button>
+      
+      <button 
+        class="btn btn-accent" 
+        (click)="togglePreview()"
+        [class.active]="previewMode">
+        <i class="fas fa-eye"></i> {{ previewMode ? 'Editar' : 'Vista Previa' }}
+      </button>
+
+      <button class="btn btn-info" (click)="exportTemplateAsJSON()">
+        <i class="fas fa-download"></i> Exportar JSON
+      </button>
+
+      <label class="btn btn-info" style="cursor: pointer; margin: 0;">
+        <i class="fas fa-upload"></i> Importar JSON
+        <input 
+          type="file" 
+          (change)="importTemplateFromJSON($event)" 
+          accept=".json"
+          style="display: none;">
+      </label>
+    </div>
+  </div>
+
+  <div class="workspace">
+    
+    <!-- SIDEBAR IZQUIERDO - Herramientas -->
+    <aside class="sidebar-left">
+      
+      <div class="section">
+        <h4>🛠️ Herramientas</h4>
+        
+        <div class="tools-grid">
+          <button 
+            class="tool-btn" 
+            [class.active]="currentTool === 'select'"
+            (click)="selectTool('select')"
+            title="Seleccionar (V)">
+            <i class="fas fa-mouse-pointer"></i>
+            <span>Seleccionar</span>
+          </button>
+      
+           <button 
+    class="tool-btn" 
+    [class.active]="currentTool === 'multi-select'"
+    (click)="selectTool('multi-select')"
+    title="Selección Múltiple (M)">
+    <i class="fas fa-vector-square"></i>
+    <span>Selección Múltiple</span>
+  </button>
+          
+          <button 
+            class="tool-btn event-zone-btn" 
+            [class.active]="currentTool === 'event-zone'"
+            (click)="selectTool('event-zone')"
+            title="Zona de Evento (E)">
+            <i class="fas fa-vector-square"></i>
+            <span>Zona Evento</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+    <h4>📈 Tipo de Línea</h4>
+    
+    <div class="line-type-grid">
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'horizontal'"
+        (click)="changeTimelineType('horizontal')"
+        title="Línea Horizontal">
+        <i class="fas fa-arrows-alt-h"></i>
+        <span>Horizontal</span>
+      </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'vertical'"
+        (click)="changeTimelineType('vertical')"
+        title="Línea Vertical">
+        <i class="fas fa-arrows-alt-v"></i>
+        <span>Vertical</span>
+      </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'curve'"
+        (click)="changeTimelineType('curve')"
+        title="Línea Curva">
+        <i class="fas fa-wave-square"></i>
+        <span>Curva</span>
+      </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'wave'"
+        (click)="changeTimelineType('wave')"
+        title="Línea Ondulada">
+        <i class="fas fa-water"></i>
+        <span>Ondulada</span>
+      </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'zigzag'"
+        (click)="changeTimelineType('zigzag')"
+        title="Línea Zigzag">
+        <i class="fas fa-bolt"></i>
+        <span>Zigzag</span>
+      </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="timelineConfig.tipo === 'spiral'"
+        (click)="changeTimelineType('spiral')"
+        title="Línea Espiral">
+        <i class="fas fa-circle-notch"></i>
+        <span>Espiral</span>
+      </button>
+
+      <button 
+      class="line-type-btn" 
+      [class.active]="timelineConfig.tipo === 's-curve'"
+      (click)="changeTimelineType('s-curve')"
+      title="Línea en S">
+      <i class="fas fa-road"></i>
+      <span>Conducto en S</span>
+    </button>
+      
+      <button 
+        class="line-type-btn" 
+        [class.active]="currentTool === 'line'"
+            (click)="selectTool('line')"
+        title="Dibujo Libre">
+        <i class="fas fa-pencil-alt"></i>
+        <span>Libre</span>
+      </button>
+    </div>
+
+    <!-- Opciones específicas para S-curve -->
+  <div class="line-options" *ngIf="timelineConfig.tipo === 's-curve'">
+    <div class="form-group">
+      <label>Altura de curvas:</label>
+      <input 
+        type="range" 
+        [(ngModel)]="timelineConfig.intensity"
+        (change)="redrawTimeline()"
+        min="10" 
+        max="200" 
+        step="5"
+        class="slider">
+      <span class="value">{{ timelineConfig.intensity }}px</span>
+    </div>
+    
+    <div class="form-group">
+    <label>Ancho total de la S:</label>
+    <input 
+      type="range"
+      [(ngModel)]="timelineConfig.anchoTotal"
+      (change)="redrawTimeline()"
+      min="200"
+      max="2000"
+      step="10"
+      class="slider">
+    <span class="value">{{ timelineConfig.anchoTotal }}px</span>
+  </div>
+  </div>
+
+  
+
+
+
+     <!-- Opciones específicas para cada tipo -->
+    <div class="line-options" *ngIf="timelineConfig.tipo !== 'custom'">
+      <div class="form-group">
+        <label>Posición X:</label>
+        <input 
+          type="range" 
+          [(ngModel)]="timelineConfig.positionX"
+          (change)="redrawTimeline()"
+          min="0" 
+          max="1200" 
+          step="10"
+          class="slider">
+        <span class="value">{{ timelineConfig.positionX }}px</span>
+      </div>
+      
+      <div class="form-group">
+        <label>Posición Y:</label>
+        <input 
+          type="range" 
+          [(ngModel)]="timelineConfig.positionY"
+          (change)="redrawTimeline()"
+          min="0" 
+          max="800" 
+          step="10"
+          class="slider">
+        <span class="value">{{ timelineConfig.positionY }}px</span>
+      </div>
+      
+      <div class="form-group" *ngIf="timelineConfig.tipo === 'wave' || timelineConfig.tipo === 'zigzag'">
+        <label>Intensidad:</label>
+        <input 
+          type="range" 
+          [(ngModel)]="timelineConfig.intensity"
+          (change)="redrawTimeline()"
+          min="1" 
+          max="50" 
+          step="1"
+          class="slider">
+        <span class="value">{{ timelineConfig.intensity }}</span>
+      </div>
+      
+      <div class="form-group" *ngIf="timelineConfig.tipo === 'spiral'">
+        <label>Vueltas:</label>
+        <input 
+          type="range" 
+          [(ngModel)]="timelineConfig.turns"
+          (change)="redrawTimeline()"
+          min="1" 
+          max="10" 
+          step="0.5"
+          class="slider">
+        <span class="value">{{ timelineConfig.turns }}</span>
+      </div>
+    </div>
+  </div>
+
+      <div class="section">
+        <h4>🎨 Estilo de Línea</h4>
+        
+        <div class="form-group">
+          <label>Color:</label>
+          <input 
+            type="color" 
+            [(ngModel)]="timelineConfig.estilo.stroke"
+            (change)="updateLineStyles()"
+            class="color-input">
+        </div>
+        
+        <div class="form-group">
+          <label>Grosor:</label>
+          <input 
+            type="range" 
+            [(ngModel)]="timelineConfig.estilo.strokeWidth"
+            (input)="updateLineStyles()"
+            min="1" 
+            max="20" 
+            step="1"
+            class="slider">
+          <span class="value">{{ timelineConfig.estilo.strokeWidth }}px</span>
+        </div>
+        
+        <div class="form-group">
+          <label>Estilo:</label>
+          <select [(ngModel)]="timelineConfig.estilo.lineCap" class="form-select">
+            <option value="round">Redondeado</option>
+            <option value="butt">Plano</option>
+            <option value="square">Cuadrado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <h4>🎨 Fondo</h4>
+        <input 
+          type="color" 
+          [(ngModel)]="backgroundColor"
+          (change)="updateBackground()"
+          class="color-input full">
+      </div>
+
+      <div class="section">
+        <h4>🔧 Acciones Rápidas</h4>
+        <!--<button class="btn btn-sm btn-secondary full" (click)="cloneSelected()">
+          <i class="fas fa-clone"></i> Duplicar
+        </button>
+        <button class="btn btn-sm btn-secondary full" (click)="groupSelected()">
+          <i class="fas fa-object-group"></i> Agrupar
+        </button>
+        <button class="btn btn-sm btn-secondary full" (click)="ungroupSelected()">
+          <i class="fas fa-object-ungroup"></i> Desagrupar
+        </button>
+        
+        <div class="button-group">
+          <button class="btn btn-sm btn-secondary" (click)="alignSelected('left')" title="Alinear izquierda">
+            <i class="fas fa-align-left"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary" (click)="alignSelected('center')" title="Alinear centro">
+            <i class="fas fa-align-center"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary" (click)="alignSelected('right')" title="Alinear derecha">
+            <i class="fas fa-align-right"></i>
+          </button>
+        </div>-->
+
+        <div class="button-group">
+          <button class="btn btn-sm btn-secondary" (click)="changeZIndex('front')" title="Traer al frente">
+            <i class="fas fa-arrow-up"></i> Frente
+          </button>
+          <button class="btn btn-sm btn-secondary" (click)="changeZIndex('back')" title="Enviar atrás">
+            <i class="fas fa-arrow-down"></i> Atrás
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h4>⌨️ Atajos</h4>
+        <ul class="shortcuts-list">
+          <li><kbd>V</kbd> Seleccionar</li>
+          <li><kbd>L</kbd> Línea</li>
+          <li><kbd>R</kbd> Rectángulo</li>
+          <li><kbd>C</kbd> Círculo</li>
+          <li><kbd>T</kbd> Texto</li>
+          <li><kbd>E</kbd> Zona Evento</li>
+          <li><kbd>Del</kbd> Eliminar</li>
+          <li><kbd>Esc</kbd> Deseleccionar</li>
+        </ul>
+      </div>
+      
+    </aside>
+
+    <!-- ÁREA DE CANVAS -->
+    <main class="canvas-area">
+      <div class="canvas-wrapper">
+        <div #container id="konva-container"></div>
+      </div>
+      
+      <div class="canvas-info">
+        <span>📐 {{ canvasWidth }}x{{ canvasHeight }}px</span>
+        <span>🛠️ <strong>{{ currentTool }}</strong></span>
+        <span *ngIf="eventZones.length > 0">
+          📍 <strong>{{ eventZones.length }}</strong> zonas
+        </span>
+        <span *ngIf="decorativeElements.length > 0">
+          🎨 <strong>{{ decorativeElements.length }}</strong> elementos
+        </span>
+      </div>
+    </main>
+
+    <!-- SIDEBAR DERECHO - Propiedades -->
+    <aside class="sidebar-right">
+      
+      <div class="section">
+        <h4>📋 Información de Plantilla</h4>
+        
+        <div class="form-group">
+          <label>Nombre:*</label>
+          <input 
+            type="text" 
+            [(ngModel)]="templateName"
+            placeholder="Ej: Línea Histórica Clásica"
+            class="form-input">
+        </div>
+        
+        <div class="form-group">
+          <label>Descripción:</label>
+          <textarea 
+            [(ngModel)]="templateDescription"
+            placeholder="Describe tu plantilla..."
+            rows="3"
+            class="form-textarea"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Categoría:</label>
+          <select [(ngModel)]="templateCategory" class="form-select">
+            <option value="educativa">📚 Educativa</option>
+            <option value="corporativa">💼 Corporativa</option>
+            <option value="historica">🏛️ Histórica</option>
+            <option value="personal">👤 Personal</option>
+            <option value="otra">📌 Otra</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="isPublic">
+            <span>Hacer pública para usuarios</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <h4>📍 Zonas de Eventos ({{ eventZones.length }})</h4>
+        
+        <div class="info-box" *ngIf="eventZones.length === 0">
+          <p>👆 Usa la herramienta <strong>"Zona Evento"</strong> para definir dónde aparecerán los eventos.</p>
+          <small>Las zonas definen el layout y estilo de cada evento.</small>
+        </div>
+        
+        <div class="zones-list" *ngIf="eventZones.length > 0">
+          <div 
+            *ngFor="let zone of eventZones; let i = index"
+            class="zone-item"
+            [class.selected]="selectedZone === zone"
+            (click)="selectedZone = zone">
+            
+            <div class="zone-header">
+              <span class="zone-number">{{ i + 1 }}</span>
+              <input 
+                type="text" 
+                [(ngModel)]="zone.nombre"
+                class="zone-name-input"
+                (click)="$event.stopPropagation()">
+              
+              <div class="zone-actions">
+
+
+                <button 
+                  class="btn-icon"
+                  (click)="changeZoneOrder(zone, 'up'); $event.stopPropagation()"
+                  [disabled]="i === 0"
+                  title="Subir">
+                  <i class="fas fa-arrow-up"></i>
+                </button>
+                <button 
+                  class="btn-icon"
+                  (click)="changeZoneOrder(zone, 'down'); $event.stopPropagation()"
+                  [disabled]="i === eventZones.length - 1"
+                  title="Bajar">
+                  <i class="fas fa-arrow-down"></i>
+                </button>
+                <button 
+                  class="btn-icon btn-delete"
+                  (click)="deleteEventZone(zone); $event.stopPropagation()"
+                  title="Eliminar zona">
+                  <i class="fas fa-trash"></i>
+                </button>
+
+                <button 
+    class="btn-icon btn-duplicate"
+    (click)="duplicateEventZone(zone); $event.stopPropagation()"
+    title="Duplicar evento completo">
+    <i class="fas fa-copy"></i>
+  </button>
+              </div>
+            </div>
+            
+            <div class="zone-info">
+              <small>
+                📐 {{ zone.posicion.x | number:'1.0-0' }}, {{ zone.posicion.y | number:'1.0-0' }}
+                &nbsp;·&nbsp;
+                {{ zone.posicion.anchoMaximo | number:'1.0-0' }} × {{ zone.posicion.altoMaximo | number:'1.0-0' }}
+              </small>
+            </div>
+            
+            <div class="zone-config" *ngIf="selectedZone === zone">
+  <h5>🎨 Elementos del Evento</h5>
+  
+  <!-- Botones para agregar elementos -->
+  <div class="elementos-toolbar">
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'contenedor')"
+    [disabled]="debeDeshabilitarBoton(zone, 'contenedor')"
+    [title]="debeDeshabilitarBoton(zone, 'contenedor') ? 'Ya existe un contenedor' : 'Agregar contenedor'">
+    <i class="fas fa-square"></i> Contenedor
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'imagen')"
+    [disabled]="debeDeshabilitarBoton(zone, 'imagen')"
+    title="Agregar imagen">
+    <i class="fas fa-image"></i> Imagen
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'titulo')"
+    [disabled]="debeDeshabilitarBoton(zone, 'titulo')"
+    title="Agregar título">
+    <i class="fas fa-heading"></i> Título
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'fecha')"
+    [disabled]="debeDeshabilitarBoton(zone, 'fecha')"
+    title="Agregar fecha">
+    <i class="fas fa-calendar"></i> Fecha
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'descripcion')"
+    [disabled]="debeDeshabilitarBoton(zone, 'descripcion')"
+    title="Agregar descripción">
+    <i class="fas fa-paragraph"></i> Descripción
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'link')"
+    [disabled]="debeDeshabilitarBoton(zone, 'link')"
+    title="Agregar enlace">
+    <i class="fas fa-link"></i> Link
+  </button>
+  
+  <button class="btn btn-sm" 
+    (click)="agregarElementoAZona(zone, 'personaje')"
+    [disabled]="debeDeshabilitarBoton(zone, 'personaje')"
+    title="Agregar personaje">
+    <i class="fas fa-user"></i> Personaje
+  </button>
+
+    <button class="btn btn-sm" (click)="agregarElementoAZona(zone, 'forma')">
+      <i class="fas fa-shapes"></i> Forma
+    </button>
+  </div>
+
+  <!-- Lista de elementos -->
+  <div class="elementos-list" *ngIf="zone.elementos.length > 0">
+    <div *ngFor="let elemento of zone.elementos" class="elemento-item">
+      <div class="elemento-header">
+        <span class="elemento-icon">
+          <i [class]="getIconForElementType(elemento.tipo)"></i>
+        </span>
+        <span class="elemento-name">{{ getElementTypeName(elemento.tipo) }}</span>
+        
+        <div class="elemento-actions">
+          <label class="checkbox-label small">
+            <input type="checkbox" [(ngModel)]="elemento.visible" 
+                   (change)="actualizarElemento(zone, elemento)">
+            Visible
+          </label>
+          <button class="btn-icon btn-delete" 
+                  (click)="eliminarElementoDeZona(zone, elemento)"
+                  title="Eliminar elemento">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Configuración del elemento -->
+      <div class="elemento-config" *ngIf="elemento.visible">
+        
+        <!-- Posición y tamaño -->
+        <div class="form-group-inline">
+          <label>X:</label>
+          <input type="number" [(ngModel)]="elemento.x" 
+                 (change)="actualizarPropiedadElemento(zone, elemento, 'x', elemento.x)"
+                 class="form-input-xs">
+          <label>Y:</label>
+          <input type="number" [(ngModel)]="elemento.y" 
+                 (change)="actualizarPropiedadElemento(zone, elemento, 'y', elemento.y)"
+                 class="form-input-xs">
+        </div>
+        
+        <div class="form-group-inline">
+          <label>Ancho:</label>
+          <input type="number" [(ngModel)]="elemento.width" 
+                 (change)="actualizarPropiedadElemento(zone, elemento, 'width', elemento.width)"
+                 class="form-input-xs">
+          <label>Alto:</label>
+          <input type="number" [(ngModel)]="elemento.height" 
+                 (change)="actualizarPropiedadElemento(zone, elemento, 'height', elemento.height)"
+                 class="form-input-xs">
+        </div>
+
+        <!-- <div *ngIf="elemento.tipo === 'link'">          
+          <div class="form-group-inline">
+            <label>Tamaño:</label>
+            <input type="number" [(ngModel)]="elemento.configuracion.fontSize" 
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontSize', elemento.configuracion.fontSize)"
+                   class="form-input-xs">
+            <label>Color:</label>
+            <input type="color" [(ngModel)]="elemento.configuracion.color" 
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'color', elemento.configuracion.color)"
+                   class="color-input-xs">
+          </div>
+        </div>-->
+
+        <!-- Configuración específica por tipo -->
+        <div *ngIf="elemento.tipo === 'titulo' || elemento.tipo === 'fecha' || elemento.tipo === 'descripcion'|| elemento.tipo === 'personaje'|| elemento.tipo === 'link'" >
+          <textarea [(ngModel)]="elemento.configuracion.texto" 
+                    (change)="actualizarConfiguracionElemento(zone, elemento, 'texto', elemento.configuracion.texto)"
+                    placeholder="Texto..."
+                    rows="2"
+                    class="form-textarea-sm" *ngIf="elemento.tipo !== 'link'"></textarea>
+          
+          <div class="form-group-inline">
+            <label>Tamaño:</label>
+            <input type="number" [(ngModel)]="elemento.configuracion.fontSize" 
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontSize', elemento.configuracion.fontSize)"
+                   class="form-input-xs">
+            <label>Color:</label>
+            <input type="color" [(ngModel)]="elemento.configuracion.color" 
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'color', elemento.configuracion.color)"
+                   class="color-input-xs">
+          </div>
+
+          <div class="form-group-inline" *ngIf="elemento.tipo === 'titulo'">
+            <label>Negrita:</label>
+            <input type="checkbox" [checked]="elemento.configuracion.fontWeight === 'bold'"
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontWeight', $any($event.target).checked ? 'bold' : 'normal')"
+                   class="checkbox-sm">
+          </div>
+        </div>
+
+        <div *ngIf="elemento.tipo === 'imagen'">
+  <div class="form-group-inline">
+    <label>Forma:</label>
+    <select [(ngModel)]="elemento.configuracion.forma" 
+            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
+            class="form-select-xs">
+      <option value="rectangulo">🟦 Rectángulo</option>
+      <option value="circulo">⭕ Círculo</option>
+      <option value="estrella">⭐ Estrella</option>
+      <option value="rombo">🔷 Rombo</option>
+      
+    </select>
+  </div>
+
+  <label>Color borde:</label>
+    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
+           class="color-input-xs">
+  <label>Tamaño borde:</label>
+    <input type="number" [(ngModel)]="elemento.configuracion.strokeWidth " 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'strokeWidth ', elemento.configuracion.strokeWidth )"
+           class="form-input-xs">
+  
+  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
+    <label>Radio esquinas:</label>
+    <input type="number" [(ngModel)]="elemento.configuracion.borderRadius" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'borderRadius', elemento.configuracion.borderRadius)"
+           class="form-input-xs">
+  </div>
+</div>
+<div *ngIf="elemento.tipo === 'forma'">
+  <div class="form-group-inline">
+    <label>Forma:</label>
+    <select [(ngModel)]="elemento.configuracion.forma" 
+            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
+            class="form-select-xs">
+     <option value="rectangulo">🟦 Rectángulo</option>
+      <option value="circulo">⭕ Círculo</option>
+      <option value="estrella">⭐ Estrella</option>
+      <option value="rombo">🔷 Rombo</option>
+      <option value="linea">📏 Línea</option>
+      <option value="linea-punteada">--- Línea Punteada</option>
+      <option value="flecha">➡️ Flecha</option>
+    </select>
+  </div>
+  
+  
+  <div class="form-group-inline">
+    <label>Color fondo:</label>
+    <input type="color" [(ngModel)]="elemento.configuracion.fill" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'fill', elemento.configuracion.fill)"
+           class="color-input-xs">
+    <label>Color borde:</label>
+    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
+           class="color-input-xs">
+  </div>
+
+  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
+    <label>Radio esquinas:</label>
+    <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
+           class="form-input-xs">
+  </div>
+</div>
+
+<div *ngIf="elemento.tipo === 'contenedor'">
+  <div class="form-group-inline">
+    <label>Forma:</label>
+    <select [(ngModel)]="elemento.configuracion.forma" 
+            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
+            class="form-select-xs">
+      <option value="rectangulo">🟦 Rectángulo</option>
+      <option value="circulo">⭕ Círculo</option>
+      <option value="estrella">⭐ Estrella</option>
+      <option value="rombo">🔷 Rombo</option>
+     
+      <option value="linea">📏 Línea</option>
+      <option value="linea-punteada">--- Línea Punteada</option>
+      <option value="flecha">➡️ Flecha</option>
+      
+    </select>
+  </div>
+  
+  
+  <div class="form-group-inline">
+    <label>Color fondo:</label>
+    <input type="color" [(ngModel)]="elemento.configuracion.fill" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'fill', elemento.configuracion.fill)"
+           class="color-input-xs">
+    <label>Color borde:</label>
+    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
+           class="color-input-xs">
+  </div>
+
+  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
+    <label>Radio esquinas:</label>
+    <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
+           (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
+           class="form-input-xs">
+  </div>
+</div>
+
+        <div *ngIf="elemento.tipo === 'contenedor' || elemento.tipo === 'forma'">
+          <!--<div class="form-group-inline">
+            <label>Forma:</label>
+            <select [(ngModel)]="elemento.configuracion.forma" 
+                    (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
+                    class="form-select-xs">
+              <option value="rectangulo">Rectángulo</option>
+              <option value="circulo">Círculo</option>
+            </select>
+          </div>-->
+          <!--<div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
+            <label>Radio esquinas:</label>
+            <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
+                   (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
+                   class="form-input-xs">
+          </div>-->
+        </div>
+
+        <!-- Rotación para todos los elementos -->
+        <div class="form-group-inline">
+          <label>Rotación:</label>
+          <input type="number" [(ngModel)]="elemento.configuracion.rotation" 
+                 (change)="actualizarConfiguracionElemento(zone, elemento, 'rotation', elemento.configuracion.rotation)"
+                 min="0" max="360" step="1"
+                 class="form-input-xs">
+          <span>°</span>
+        </div>
+        <!-- Restricciones -->
+<div class="restricciones">
+  <h6>🔒 Restricciones</h6>
+  <div class="form-group-inline">
+    <label>Mover:</label>
+    <input type="checkbox" 
+           [checked]="getRestriccionMovable(elemento)"
+           (change)="actualizarRestriccionMovable(zone, elemento, $any($event.target).checked)"
+           class="checkbox-sm">
+  </div>
+  <div class="form-group-inline">
+    <label>Redimensionar:</label>
+    <input type="checkbox" 
+           [checked]="getRestriccionResizable(elemento)"
+           (change)="actualizarRestriccionResizable(zone, elemento,$any($event.target).checked)"
+           class="checkbox-sm">
+  </div>
+  <div class="form-group-inline">
+    <label>Rotar:</label>
+    <input type="checkbox" 
+           [checked]="getRestriccionRotatable(elemento)"
+           (change)="actualizarRestriccionRotatable(zone, elemento, $any($event.target).checked)"
+           class="checkbox-sm">
+  </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h4>🎭 Elementos Decorativos ({{ decorativeElements.length }})</h4>
+        
+        <div class="info-box" *ngIf="decorativeElements.length === 0">
+          <p>Los elementos decorativos (formas, textos, imágenes) aparecerán aquí.</p>
+          <small>Usa las herramientas de dibujo para agregar elementos.</small>
+        </div>
+        
+        <ul class="elements-list" *ngIf="decorativeElements.length > 0">
+          <li *ngFor="let element of decorativeElements; let i = index" class="element-item">
+            <span class="element-icon">
+              <i class="fas fa-{{ getIconForType(element.tipo) }}"></i>
+            </span>
+            <span class="element-name">{{ element.tipo }} {{ i + 1 }}</span>
+            <button 
+              class="btn-icon"
+              (click)="element.bloqueado = !element.bloqueado"
+              [title]="element.bloqueado ? 'Desbloquear' : 'Bloquear'">
+              <i class="fas fa-{{ element.bloqueado ? 'lock' : 'unlock' }}"></i>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h4>🗑️ Acciones</h4>
+        <button 
+          class="btn btn-danger full" 
+          (click)="deleteSelected()"
+          [disabled]="currentTool !== 'select'">
+          <i class="fas fa-trash"></i> Eliminar Seleccionado
+        </button>
+      </div>
+      
+    </aside>
+    
+  </div>
+  
+</div>

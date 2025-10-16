@@ -68,6 +68,8 @@ export interface ProyectoData {
   estilos: EstilosTimeline;
 }
 
+
+
 // Interfaces principales del servicio
 export interface Proyecto {
   id?: number;

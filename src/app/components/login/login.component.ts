@@ -10,7 +10,7 @@ import { RouterModule } from '@angular/router';
   styleUrls: ['./login.component.css'],
   imports: [
    
-    FormsModule ,CommonModule,ReactiveFormsModule, RouterModule// 👈 Agregar aquí
+    FormsModule ,CommonModule,ReactiveFormsModule, RouterModule
   ],
 })
 export class LoginComponent implements OnInit {

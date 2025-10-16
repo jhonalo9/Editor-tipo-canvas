@@ -15,7 +15,7 @@ export interface RegisterRequest {
   password: string;
 }
 
-// ✅ CORREGIDO: Interfaces que coinciden con la respuesta del backend
+
 export interface Usuario {
   id: number;
   nombre: string;
@@ -76,7 +76,7 @@ export class AuthService {
 login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap(response => {
-        // ✅ CORREGIDO: Mapear la respuesta correctamente
+        
         const userData: CurrentUser = {
           ...response.usuario,
           token: response.token
@@ -123,17 +123,6 @@ login(credentials: LoginRequest): Observable<AuthResponse> {
     return { 'Content-Type': 'application/json' };
   }
 
-   /*private isTokenValid(token: string): boolean {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const exp = payload.exp * 1000; // Convertir a milisegundos
-      const now = Date.now();
-      return now < exp;
-    } catch (error) {
-      console.error('Error verificando token:', error);
-      return false;
-    }
-  }*/
 
 
   etToken(): string | null {
@@ -178,16 +167,16 @@ logout(): void {
  debugToken(): void {
     const token = this.getToken();
     if (token) {
-      console.log('🔐 Token completo:', token);
+      console.log('Token completo:', token);
       
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('📋 Payload del token:', payload);
-        console.log('⏰ Expiración:', new Date(payload.exp * 1000));
-        console.log('⏰ Ahora:', new Date());
-        console.log('✅ Token válido:', Date.now() < payload.exp * 1000);
+        console.log('Payload del token:', payload);
+        console.log('Expiración:', new Date(payload.exp * 1000));
+        console.log('Ahora:', new Date());
+        console.log('Token válido:', Date.now() < payload.exp * 1000);
       } catch (error) {
-        console.error('❌ Error decodificando token:', error);
+        console.error('Error decodificando token:', error);
       }
     }
   }

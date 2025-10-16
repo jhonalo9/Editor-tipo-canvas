@@ -17,6 +17,7 @@ import { PlantillaDesignEditorComponent } from './plantilla-design-editor-compon
 import { EditorofiadminComponent } from './editorofiadmin/editorofiadmin.component';
 import { UpgradePremiumComponent } from './usuario/upgrade-premium/upgrade-premium.component';
 import { EditorOFIofiComponent } from './editor-ofiofi/editor-ofiofi.component';
+import { TemplateEditorComponent } from './features/admin/template-editor/template-editor.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -37,7 +38,9 @@ export const routes: Routes = [
   {path:'editores',component:PlantillaDesignEditorComponent},
   {path:'editorofi',component:EditorofiadminComponent},
   {path:'plan',component:UpgradePremiumComponent},
-  {path:'plantillaofi',component:EditorOFIofiComponent}
+  {path:'plantillaofi',component:EditorOFIofiComponent},
+
+  {path:'TemplateEditorComponent',component:TemplateEditorComponent}
 
   
  
