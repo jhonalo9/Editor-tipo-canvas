@@ -1,0 +1,196 @@
+<app-header></app-header>
+
+<div class="explorar-container">
+      <!-- Header -->
+      <div class="explorar-header">
+        <h1>Explorar Plantillas</h1>
+        <p>Descubre y utiliza nuestras plantillas disponibles</p>
+      </div>
+
+      <!-- Barra de búsqueda y filtros -->
+      <div class="filtros-container">
+        <div class="search-bar">
+          <div class="search-input-container">
+            <span class="search-icon">🔍</span>
+            <input
+              type="text"
+              [(ngModel)]="terminoBusqueda"
+              (input)="onBuscarChange()"
+              placeholder="Buscar plantillas por nombre, categoría..."
+              class="search-input"
+            />
+            <button *ngIf="terminoBusqueda" (click)="limpiarBusqueda()" class="clear-search">
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div class="filtros-row">
+          <!-- Filtro por categoría -->
+         <div class="filtro-group">
+  <label for="categoria">Categoría:</label>
+  <select
+    id="categoria"
+    [(ngModel)]="categoriaSeleccionada"
+    (change)="aplicarFiltros()"
+    class="filtro-select"
+  >
+    <option value="">Todas las categorías</option>
+    <option *ngFor="let categoria of categorias" [value]="categoria">
+      {{ categoria }}
+    </option>
+  </select>
+</div>
+
+          <!-- Contador de resultados -->
+          <div class="resultados-info">
+            <span class="resultados-count">
+              {{ plantillasFiltradas.length }} de {{ totalPlantillas }} plantillas
+            </span>
+            <button (click)="limpiarFiltros()" class="btn-limpiar" *ngIf="hayFiltrosActivos">
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estados de carga y error -->
+      <div *ngIf="cargando" class="loading-state">
+        <div class="spinner"></div>
+        <p>Cargando plantillas...</p>
+      </div>
+
+      <div *ngIf="error" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h3>Error al cargar plantillas</h3>
+        <p>{{ error }}</p>
+        <button (click)="cargarPlantillas()" class="btn-retry">Reintentar</button>
+      </div>
+
+      <!-- Grid de plantillas -->
+      <div *ngIf="!cargando && !error" class="plantillas-section">
+        <div *ngIf="plantillasFiltradas.length === 0" class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <h3>No se encontraron plantillas</h3>
+          <p *ngIf="hayFiltrosActivos">
+            Intenta ajustar tus filtros o términos de búsqueda.
+          </p>
+          <p *ngIf="!hayFiltrosActivos">No hay plantillas disponibles en este momento.</p>
+          <button *ngIf="hayFiltrosActivos" (click)="limpiarFiltros()" class="btn-primary">
+            Limpiar filtros
+          </button>
+        </div>
+
+        <div *ngIf="plantillasFiltradas.length > 0" class="plantillas-grid">
+          <div
+            *ngFor="let plantilla of plantillasFiltradas"
+            class="plantilla-card"
+            [class.favorita]="plantilla.favorito"
+            (click)="abrirModal(plantilla, $event)"
+          >
+            <!-- Portada de la plantilla -->
+            <div class="plantilla-portada">
+              <img
+                [src]="getPlantillaImage(plantilla)"
+                [alt]="plantilla.nombre"
+                (error)="onImageError($event, plantilla)"
+                class="portada-img"
+              />
+              <!-- BADGES REMOVIDOS - Solo plantillas públicas -->
+             <!-- <div class="plantilla-overlay">
+                <button
+                  class="btn-favorito"
+                  (click)="toggleFavorito(plantilla, $event)"
+                  [class.favorita]="plantilla.favorito"
+                  [disabled]="cambiandoFavoritos.has(plantilla.id)"
+                  [title]="plantilla.favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+                >
+                  <span *ngIf="cambiandoFavoritos.has(plantilla.id)" class="spinner-small"></span>
+                  {{ cambiandoFavoritos.has(plantilla.id) ? '' : (plantilla.favorito ? '★' : '☆') }}
+                </button>
+                <button class="btn-usar" (click)="usarPlantilla(plantilla); $event.stopPropagation()">
+                  Usar
+                </button>
+              </div>-->
+            </div>
+
+            <!-- Información de la plantilla -->
+            <div class="plantilla-info">
+              <h4 class="plantilla-title">{{ plantilla.nombre }}</h4>
+              <p class="plantilla-descripcion" *ngIf="plantilla.descripcion">
+                {{ plantilla.descripcion }}
+              </p>
+              <div class="plantilla-meta">
+                <span class="categoria" *ngIf="getPlantillaCategoria(plantilla)">
+                  {{ getPlantillaCategoria(plantilla) }}
+                </span>
+                <span class="fecha" *ngIf="plantilla.creadoEn">
+                  {{ formatFecha(plantilla.creadoEn) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Vista Previa -->
+      <div *ngIf="modalVisible" class="modal-overlay" (click)="cerrarModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <button class="modal-close" (click)="cerrarModal()">×</button>
+
+          <div *ngIf="plantillaSeleccionada" class="modal-plantilla">
+            <div class="modal-portada">
+              <img
+                [src]="getPlantillaImage(plantillaSeleccionada)"
+                [alt]="plantillaSeleccionada.nombre"
+                class="modal-img"
+              />
+            </div>
+
+            <div class="modal-info">
+              <div class="modal-header">
+                <h3>{{ plantillaSeleccionada.nombre }}</h3>
+                <!-- BADGE DE ESTADO REMOVIDO - Solo plantillas públicas -->
+              </div>
+
+              <p class="modal-descripcion" *ngIf="plantillaSeleccionada.descripcion">
+                {{ plantillaSeleccionada.descripcion }}
+              </p>
+
+              <div class="modal-meta">
+                <div class="meta-item">
+                  <strong>Categoría:</strong>
+                  <span>{{ getPlantillaCategoria(plantillaSeleccionada) || 'Sin categoría' }}</span>
+                </div>
+                <div class="meta-item" *ngIf="plantillaSeleccionada.creadoEn">
+                  <strong>Creada:</strong>
+                  <span>{{ formatFecha(plantillaSeleccionada.creadoEn) }}</span>
+                </div>
+                <div class="meta-item" *ngIf="plantillaSeleccionada.actualizadoEn">
+                  <strong>Actualizada:</strong>
+                  <span>{{ formatFecha(plantillaSeleccionada.actualizadoEn) }}</span>
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button
+                  class="btn-favorito-modal"
+                  (click)="toggleFavoritoModal(plantillaSeleccionada, $event)"
+                  [class.favorita]="plantillaSeleccionada.favorito"
+                  [disabled]="cambiandoFavoritos.has(plantillaSeleccionada.id)"
+                >
+                  <span *ngIf="cambiandoFavoritos.has(plantillaSeleccionada.id)" class="spinner-small"></span>
+                  {{ cambiandoFavoritos.has(plantillaSeleccionada.id) ? 
+                    'Procesando...' : 
+                    (plantillaSeleccionada.favorito ? '★ Quitar de Favoritos' : '☆ Agregar a Favoritos') 
+                  }}
+                </button>
+                <button class="btn-usar-modal" (click)="usarPlantilla(plantillaSeleccionada)">
+                  Usar esta Plantilla
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

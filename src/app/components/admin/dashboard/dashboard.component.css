@@ -1,0 +1,139 @@
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  transition: margin-left 0.3s ease;
+}
+
+.content-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Metric Cards */
+.metric-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.25rem;
+}
+
+.metric-icon.bg-primary { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.metric-icon.bg-success { background: linear-gradient(135deg, #10b981, #059669); }
+.metric-icon.bg-info { background: linear-gradient(135deg, #06b6d4, #0e7490); }
+.metric-icon.bg-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+/* Charts */
+.chart-container {
+  position: relative;
+  height: 200px;
+  width: 100%;
+}
+
+/* Activity Icons */
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+/* Cards */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 20px;
+}
+
+.card-title {
+  color: #374151;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* List Groups */
+.list-group-item {
+  border: none;
+  padding: 12px 0;
+}
+
+.list-group-item:first-child {
+  padding-top: 0;
+}
+
+.list-group-item:last-child {
+  padding-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .content-container {
+    padding: 16px;
+  }
+  
+  .metric-card .d-flex {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .metric-icon {
+    margin-top: 12px;
+  }
+}
+
+/* Loading Animation */
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* Badges */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Page Title */
+.page-title {
+  color: #1e293b;
+  font-weight: 700;
+  margin: 0;
+  font-size: 2rem;
+}

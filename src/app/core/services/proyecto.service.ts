@@ -4,6 +4,15 @@ import { Observable, BehaviorSubject, lastValueFrom } from 'rxjs';
 import { environment } from '../../environment/environment';
 import { AuthService } from './auth.service';
 
+
+export interface ProyectoTemporal {
+  titulo: string;
+  descripcion: string;
+  plantillaId?: number;
+  plantillaData?: any; // ← Datos completos de la plantilla seleccionada
+}
+
+
 // Interfaces para la estructura de data
 export interface EventoData {
   year: number;
@@ -88,7 +97,7 @@ export interface ProyectoRequest {
   titulo: string;
   descripcion: string;
   data: string; // JSON stringificado de ProyectoData
-  plantillaBaseId?: number;
+  plantillaBaseId?:  number | null; 
 }
 
 export interface ProyectoResponseDTO {
@@ -115,7 +124,8 @@ export interface EstadisticasUsuario {
 })
 export class ProyectoService {
   private apiUrl = `${environment.apiUrl}/proyectos`;
-  private proyectoTemporal = new BehaviorSubject<{titulo: string, descripcion: string} | null>(null);
+  private proyectoTemporal = new BehaviorSubject<ProyectoTemporal | null>(null);
+  public proyectoTemporal$ = this.proyectoTemporal.asObservable();
 
   constructor(
     private http: HttpClient,
@@ -124,13 +134,19 @@ export class ProyectoService {
 
   // === MÉTODOS BÁSICOS CRUD ===
 
-  setProyectoTemporal(metadatos: { titulo: string, descripcion: string }): void {
-    this.proyectoTemporal.next(metadatos);
-  }
+  setProyectoTemporal(proyecto: ProyectoTemporal): void {
+  this.proyectoTemporal.next(proyecto);
+  console.log('📦 Proyecto temporal guardado:', {
+    titulo: proyecto.titulo,
+    descripcion: proyecto.descripcion,
+    tienePlantilla: !!proyecto.plantillaData,
+    nombrePlantilla: proyecto.plantillaData?.nombre || proyecto.plantillaData?.titulo
+  });
+}
 
-  getProyectoTemporal(): { titulo: string, descripcion: string } | null {
-    return this.proyectoTemporal.value;
-  }
+  getProyectoTemporal(): ProyectoTemporal | null {
+  return this.proyectoTemporal.value;
+}
 
   clearProyectoTemporal(): void {
     this.proyectoTemporal.next(null);
@@ -422,10 +438,22 @@ private crearEstructuraDataMinima(dataOriginal: ProyectoData): ProyectoData {
   };
 }
 
-  // Serializar data de proyecto a string JSON
-  /*serializarData(data: ProyectoData): string {
-    return JSON.stringify(data || {});
-  }*/
+actualizarMetadatos(titulo: string, descripcion: string): void {
+  const actual = this.proyectoTemporal.value;
+  if (actual) {
+    this.proyectoTemporal.next({
+      ...actual,
+      titulo,
+      descripcion
+    });
+    console.log('✏️ Metadatos actualizados:', { titulo, descripcion });
+  }
+}
+
+tienePlantillaCargada(): boolean {
+  const actual = this.proyectoTemporal.value;
+  return !!(actual && actual.plantillaData);
+}
 
   // Parsear string JSON a objeto ProyectoData
   parsearData(dataString: string): ProyectoData {

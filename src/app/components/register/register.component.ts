@@ -11,7 +11,7 @@ import { RouterModule } from '@angular/router';
   styleUrls: ['./register.component.css'],
   imports: [
    CommonModule,RouterModule,
-    FormsModule  // 👈 Agregar aquí
+    FormsModule 
   ],
 })
 export class RegisterComponent {
@@ -58,7 +58,7 @@ export class RegisterComponent {
         
         console.log('Registro exitoso:', response);
         
-        // ✅ CORREGIDO: No necesitas hacer login automático porque el register ya te autentica
+       
         // El servicio AuthService ya guarda el token y usuario en localStorage
         
         // Redirigir según el rol del usuario registrado

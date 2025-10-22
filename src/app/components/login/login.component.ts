@@ -52,7 +52,7 @@ export class LoginComponent implements OnInit {
         
         // ✅ CORREGIDO: Acceder al rol a través de usuario.rol
         if (res.usuario.rol === 'ADMIN') { // ← Cambiado de 'admin' a 'ADMIN' (mayúsculas)
-          this.router.navigate(['/admin/plantillas']);
+          this.router.navigate(['/admin/home']);
         } else {
           this.router.navigate(['/usuario/descripcion-proyect']);
         }

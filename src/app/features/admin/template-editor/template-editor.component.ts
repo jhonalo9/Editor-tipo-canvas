@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Konva from 'konva';
 import { AdminTemplateService } from './admin-template.service';
+
 import { 
   AdminTemplate, 
   ZonaEvento, 
@@ -12,9 +13,12 @@ import {
   SerializedKonvaElement,
   ElementoLayout,
   ElementoEvento,
-  FormaImagen
+  FormaImagen,
+  Categoria
 } from './admin-template.interface';
 import { lastValueFrom } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { ArchivoService } from '../../../core/services/archivo.service';
 
 type ToolType = 'select'| 'multi-select' | 'line' | 'rect' | 'circle' | 'text' | 'event-zone' | 'connector';
 
@@ -51,9 +55,23 @@ export class TemplateEditorComponent implements OnInit, OnDestroy {
   // Configuración de la plantilla
   templateName: string = '';
   templateDescription: string = '';
-  templateCategory: 'educativa' | 'corporativa' | 'historica' | 'personal' | 'otra' = 'educativa';
+  templateCategory: string = 'educativa'; 
   isPublic: boolean = true;
+  isSaving: boolean = false;
   backgroundColor: string = '#ffffff';
+
+  currentTemplateId?: number;
+
+
+  // NUEVAS PROPIEDADES PARA PORTADA
+  proyectoPortada: string = '';
+  portadaArchivo: File | null = null;
+  showPortadaModal: boolean = false;
+
+
+  // Lista de categorías para el select
+  categorias: Categoria[] = [];
+  selectedCategoria: Categoria = {} as Categoria;
   
   // Canvas settings
   canvasWidth: number = 1200;
@@ -391,13 +409,6 @@ private quadraticBezier(p0: number, p1: number, p2: number, t: number): number {
   return (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2;
 }
 
-
-
-
-
-
-
-
   
   // Elementos decorativos
   decorativeElements: ElementoDecorativo[] = [];
@@ -414,12 +425,35 @@ private quadraticBezier(p0: number, p1: number, p2: number, t: number): number {
   previewMode: boolean = false;
   
   // Estado de guardado
-  isSaving: boolean = false;
-  currentTemplateId?: number;
+ 
 
-  constructor(private templateService: AdminTemplateService) {}
+  constructor(private templateService: AdminTemplateService,private authService: AuthService,private archivoService: ArchivoService) {}
+
+
+  private async obtenerUsuarioActual(): Promise<any> {
+  try {
+    // Si tu AuthService tiene un método para obtener el usuario actual
+    if (this.authService.getCurrentUser) {
+      return this.authService.getCurrentUser();
+    }
+    
+    // Si no, intenta obtener el ID del usuario del token
+    const token = this.authService.getToken();
+    if (token) {
+      // Decodificar el token JWT para obtener el userId
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return { id: payload.userId || payload.sub };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error obteniendo usuario actual:', error);
+    return null;
+  }
+}
 
   ngOnInit(): void {
+    this.loadCategorias();
     this.initKonva();
     this.setupDrawingEvents();
     this.setupKeyboardShortcuts();
@@ -494,6 +528,21 @@ handleKeyboardEvent(event: KeyboardEvent): void {
   }
 }
 
+
+ loadCategorias(): void {
+    this.templateService.getCategorias().subscribe({
+      next: (categorias) => {
+        this.categorias = categorias;
+        // Seleccionar la categoría por defecto
+        this.selectedCategoria = categorias.find(c => c.nombre.toLowerCase() === 'educativa') || categorias[0];
+      },
+      error: (error) => {
+        console.error('Error cargando categorías:', error);
+        // Fallback a categorías por defecto
+        
+      }
+    });
+  }
 
 private copySelectedElements(): void {
   const nodes = this.transformer.nodes();
@@ -1268,6 +1317,212 @@ agregarElementoAZona(zone: ZonaEvento, tipo: ElementoEvento['tipo']): void {
   
 }
 
+
+/**
+ * ✅ ABRIR MODAL DE PORTADA
+ */
+abrirModalPortada(): void {
+  this.showPortadaModal = true;
+}
+
+/**
+ * ✅ CERRAR MODAL DE PORTADA
+ */
+cerrarModalPortada(): void {
+  this.showPortadaModal = false;
+  this.portadaArchivo = null;
+}
+
+/**
+ * ✅ CANCELAR PORTADA
+ */
+cancelarPortada(): void {
+  this.showPortadaModal = false;
+  this.portadaArchivo = null;
+  this.proyectoPortada = '';
+}
+
+/**
+ * ✅ MANEJAR SELECCIÓN DE PORTADA
+ */
+onPortadaSelected(event: any): void {
+  const file = event.target.files[0];
+  console.log('📁 Archivo seleccionado para portada:', file);
+  
+  if (!file) {
+    console.log('⚠️ No se seleccionó archivo');
+    return;
+  }
+
+  // Validar que sea una imagen
+  if (!file.type.startsWith('image/')) {
+    alert('Por favor, selecciona un archivo de imagen');
+    return;
+  }
+
+  // Validar tamaño (máximo 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('La imagen es demasiado grande. Máximo 5MB.');
+    return;
+  }
+
+  // ✅ Guardar el archivo
+  this.portadaArchivo = file;
+  console.log('✅ portadaArchivo establecido:', this.portadaArchivo);
+
+  // ✅ Crear preview
+  const reader = new FileReader();
+  reader.onload = (e: any) => {
+    this.proyectoPortada = e.target.result;
+    console.log('🖼️ Preview de portada creado');
+  };
+  reader.onerror = (error) => {
+    console.error('❌ Error leyendo archivo para preview:', error);
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * ✅ ELIMINAR PORTADA
+ */
+eliminarPortada(): void {
+  this.proyectoPortada = '';
+  this.portadaArchivo = null;
+  console.log('🗑️ Portada eliminada');
+}
+
+
+/**
+ * ✅ GENERAR PORTADA AUTOMÁTICA DESDE EL PROYECTO
+ */
+private async generarPortadaDesdeProyecto(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('🖼️ Generando portada automática desde plantilla...');
+      
+      // Ocultar elementos temporales (controles de edición)
+      this.ocultarElementosTemporales();
+      this.stage.batchDraw();
+      
+      setTimeout(() => {
+        try {
+          // Convertir el stage a imagen
+          const dataURL = this.stage.toDataURL({
+            pixelRatio: 1,
+            quality: 0.8,
+            mimeType: 'image/jpeg'
+          });
+          
+          console.log('✅ Portada automática generada correctamente');
+          
+          // Convertir data URL a File
+          this.portadaArchivo = this.dataURLtoFile(dataURL, `portada-plantilla-${Date.now()}.jpg`);
+          this.proyectoPortada = dataURL;
+          
+          // Restaurar elementos
+          this.mostrarElementosTemporales();
+          resolve();
+          
+        } catch (error) {
+          console.error('❌ Error generando portada automática:', error);
+          this.mostrarElementosTemporales();
+          reject(error);
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('❌ Error en generarPortadaDesdeProyecto:', error);
+      this.mostrarElementosTemporales();
+      reject(error);
+    }
+  });
+}
+
+/**
+ * ✅ OCULTAR ELEMENTOS TEMPORALES (controles de edición)
+ */
+private ocultarElementosTemporales(): void {
+  try {
+    console.log('👁️ Ocultando elementos temporales...');
+    
+    // Ocultar transformers
+    this.transformer.visible(false);
+    
+    // Ocultar rectángulos de zonas (si están en modo edición)
+    this.eventsLayer.children?.forEach((child: Konva.Node) => {
+      if (child instanceof Konva.Rect && child.dash() && child.dash().length > 0) {
+        child.visible(false);
+      }
+      if (child instanceof Konva.Text && child.getAttr('isLabel')) {
+        child.visible(false);
+      }
+    });
+    
+    console.log('✅ Elementos temporales ocultados');
+  } catch (error) {
+    console.error('❌ Error ocultando elementos temporales:', error);
+  }
+}
+
+/**
+ * ✅ MOSTRAR ELEMENTOS TEMPORALES
+ */
+private mostrarElementosTemporales(): void {
+  try {
+    console.log('👁️ Mostrando elementos temporales...');
+    
+    // Mostrar transformers
+    this.transformer.visible(true);
+    
+    // Mostrar rectángulos de zonas
+    this.eventsLayer.children?.forEach((child: Konva.Node) => {
+      if (child instanceof Konva.Rect && child.dash() && child.dash().length > 0) {
+        child.visible(true);
+      }
+      if (child instanceof Konva.Text && child.getAttr('isLabel')) {
+        child.visible(true);
+      }
+    });
+    
+    console.log('✅ Elementos temporales mostrados');
+  } catch (error) {
+    console.error('❌ Error mostrando elementos temporales:', error);
+  }
+}
+
+/**
+ * ✅ CONVERTIR DATA URL A FILE
+ */
+private dataURLtoFile(dataurl: string, filename: string): File {
+  try {
+    if (!dataurl || !dataurl.startsWith('data:')) {
+      throw new Error('Invalid data URL');
+    }
+
+    const arr = dataurl.split(',');
+    if (arr.length < 2) {
+      throw new Error('Invalid data URL format');
+    }
+
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    
+    return new File([u8arr], filename, { type: mime });
+    
+  } catch (error) {
+    console.error('❌ Error convirtiendo data URL a File:', error);
+    return new File([], filename, { type: 'image/png' });
+  }
+}
+
 private getConfiguracionPorDefecto(tipo: ElementoEvento['tipo']): any {
   const configs = {
     imagen: {
@@ -1485,34 +1740,44 @@ private crearFormaImagen(elemento: ElementoEvento): Konva.Shape {
   const height = elemento.height;
   const fill = '#bdc3c7';
   const stroke = elemento.configuracion.stroke;
-  const strokeWidth = elemento.configuracion.strokeWidth ;
+  const strokeWidth = elemento.configuracion.strokeWidth;
 
   switch (forma) {
     case 'circulo':
+      // ✅ IMPORTANTE: Usar offsetX/offsetY para centrar sin cambiar x,y
       return new Konva.Circle({
+        x: width / 2,  // ← Centro dentro del área del elemento
+        y: height / 2,
         radius: Math.min(width, height) / 2,
         fill: fill,
         stroke: stroke,
-        strokeWidth: strokeWidth
+        strokeWidth: strokeWidth,
+        offsetX: 0,  // ✅ SIN offset adicional
+        offsetY: 0
       });
 
     case 'estrella':
+      // ✅ Mismo principio: centrar dentro del área
       return new Konva.Star({
+        x: width / 2,
+        y: height / 2,
         numPoints: 5,
         innerRadius: Math.min(width, height) * 0.4,
         outerRadius: Math.min(width, height) / 2,
         fill: fill,
         stroke: stroke,
-        strokeWidth: strokeWidth
+        strokeWidth: strokeWidth,
+        offsetX: 0,  // ✅ SIN offset adicional
+        offsetY: 0
       });
 
     case 'rombo':
-      // Para rombo, necesitamos usar un polígono
+      // ✅ Crear puntos RELATIVOS al área (0,0 a width,height)
       const points = [
-        0, -height / 2,    // top
-        width / 2, 0,      // right
-        0, height / 2,     // bottom
-        -width / 2, 0      // left
+        width / 2, 0,           // top (centro superior)
+        width, height / 2,      // right (centro derecho)
+        width / 2, height,      // bottom (centro inferior)
+        0, height / 2          // left (centro izquierdo)
       ];
       return new Konva.Line({
         points: points,
@@ -1524,7 +1789,10 @@ private crearFormaImagen(elemento: ElementoEvento): Konva.Shape {
 
     case 'rectangulo':
     default:
+      // ✅ Rectángulo ya funciona correctamente (esquina superior izquierda)
       return new Konva.Rect({
+        x: 0,
+        y: 0,
         width: width,
         height: height,
         fill: fill,
@@ -1540,15 +1808,16 @@ private crearFormaImagen(elemento: ElementoEvento): Konva.Shape {
  */
 private crearFormaGeometrica(elemento: ElementoEvento): Konva.Shape {
   const forma = elemento.configuracion.forma || 'rectangulo';
- 
-  const width = Math.max(elemento.width, 20); // Mínimo 20px
-  const height = Math.max(elemento.height, 20); // Mínimo 20px
+  const width = Math.max(elemento.width, 20);
+  const height = Math.max(elemento.height, 20);
   const fill = elemento.configuracion.fill || '#3498db';
   const stroke = elemento.configuracion.stroke || '#2980b9';
   const strokeWidth = elemento.configuracion.strokeWidth || 1;
- let shape: Konva.Shape;
+  
+  let shape: Konva.Shape;
+  
   switch (forma) {
-   case 'linea':
+    case 'linea':
       shape = this.crearLinea(elemento);
       shape.setAttr('shapeType', 'linea');
       break;
@@ -1562,30 +1831,42 @@ private crearFormaGeometrica(elemento: ElementoEvento): Konva.Shape {
       shape = this.crearFlechaComoLinea(elemento);
       shape.setAttr('shapeType', 'flecha');
       break;
+    
     case 'circulo':
+      // ✅ CORREGIDO: Centrar dentro del área sin modificar coordenadas
       return new Konva.Circle({
+        x: width / 2,  // ← Centro relativo al área
+        y: height / 2,
         radius: Math.min(width, height) / 2,
         fill: fill,
         stroke: stroke,
-        strokeWidth: strokeWidth
+        strokeWidth: strokeWidth,
+        offsetX: 0,  // ✅ SIN offset adicional
+        offsetY: 0
       });
 
     case 'estrella':
+      // ✅ CORREGIDO
       return new Konva.Star({
+        x: width / 2,
+        y: height / 2,
         numPoints: 5,
         innerRadius: Math.min(width, height) * 0.4,
         outerRadius: Math.min(width, height) / 2,
         fill: fill,
         stroke: stroke,
-        strokeWidth: strokeWidth
+        strokeWidth: strokeWidth,
+        offsetX: 0,  // ✅ SIN offset adicional
+        offsetY: 0
       });
 
     case 'rombo':
+      // ✅ CORREGIDO: Puntos relativos al área (0,0 a width,height)
       const points = [
-        0, -height / 2,
-        width / 2, 0,
-        0, height / 2,
-        -width / 2, 0
+        width / 2, 0,        // top
+        width, height / 2,   // right
+        width / 2, height,   // bottom
+        0, height / 2       // left
       ];
       return new Konva.Line({
         points: points,
@@ -1597,7 +1878,10 @@ private crearFormaGeometrica(elemento: ElementoEvento): Konva.Shape {
 
     case 'rectangulo':
     default:
+      // ✅ Ya funciona correctamente
       return new Konva.Rect({
+        x: 0,
+        y: 0,
         width: width,
         height: height,
         fill: fill,
@@ -1605,8 +1889,8 @@ private crearFormaGeometrica(elemento: ElementoEvento): Konva.Shape {
         strokeWidth: strokeWidth,
         cornerRadius: elemento.configuracion.cornerRadius || 0
       });
-      
   }
+  
   return shape;
 }
 
@@ -2703,84 +2987,271 @@ private renderizarElementoPreview(group: Konva.Group, zone: ZonaEvento, elemento
   /**
    * Guardar plantilla
    */
-  async saveTemplate(): Promise<void> {
-    if (!this.templateName.trim()) {
-      alert('Por favor, ingresa un nombre para la plantilla');
-      return;
-    }
 
-    if (this.eventZones.length === 0) {
-      alert('Por favor, define al menos una zona de evento');
-      return;
-    }
-
-    this.isSaving = true;
-
-    try {
-      // Serializar línea de tiempo
-      this.timelineConfig.elementosKonva = [];
-      this.timelineLayer.children?.forEach((child: Konva.Node) => {
-        if (child instanceof Konva.Shape) {
-          this.timelineConfig.elementosKonva!.push(
-            this.serializeKonvaElement(child)
-          );
-        }
-      });
-
-      // Generar thumbnail
-      const thumbnail = await this.templateService.generateThumbnail(this.stage);
-
-      // Crear objeto de plantilla
-      const template: AdminTemplate = {
-        nombre: this.templateName,
-        descripcion: this.templateDescription,
-        categoria: this.templateCategory,
-        esPublica: this.isPublic,
-        configuracionVisual: {
-          canvasWidth: this.canvasWidth,
-          canvasHeight: this.canvasHeight,
-          backgroundColor: this.backgroundColor,
-          lineaDeTiempo: this.timelineConfig,
-          zonasEventos: this.eventZones,
-          elementosDecorativos: this.decorativeElements
-        },
-        metadatos: {
-          fechaCreacion: new Date(),
-          fechaModificacion: new Date(),
-          creadoPor: 1, // TODO: Obtener del AuthService
-          version: '1.0',
-          vecesUsada: 0,
-          thumbnail: thumbnail
-        }
-      };
-
-      // Guardar en servidor
-      if (this.currentTemplateId) {
-        await lastValueFrom(
-          this.templateService.updateTemplate(this.currentTemplateId, template)
-        );
-        alert('✅ Plantilla actualizada correctamente');
-      } else {
-        const response = await lastValueFrom(
-          this.templateService.createTemplate(template)
-        );
-        this.currentTemplateId = response.id;
-        alert('✅ Plantilla guardada correctamente');
-      }
-
-    } catch (error) {
-      console.error('❌ Error guardando plantilla:', error);
-      alert('Error al guardar la plantilla');
-    } finally {
-      this.isSaving = false;
-    }
+ async saveTemplate(): Promise<void> {
+  // Validaciones iniciales
+  if (!this.templateName.trim()) {
+    alert('Por favor, ingresa un nombre para la plantilla');
+    return;
   }
+
+  if (this.eventZones.length === 0) {
+    alert('Por favor, define al menos una zona de evento');
+    return;
+  }
+
+  if (!this.authService.isLoggedIn()) {
+    alert('Debes iniciar sesión para guardar plantillas');
+    return;
+  }
+
+  this.isSaving = true;
+
+  try {
+    // Obtener usuario actual
+    const usuarioActual = await this.obtenerUsuarioActual();
+    const usuarioId = usuarioActual?.id || 1;
+
+    // ✅ PASO 1: Serializar línea de tiempo (UNA SOLA VEZ)
+    this.timelineConfig.elementosKonva = [];
+    this.timelineLayer.children?.forEach((child: Konva.Node) => {
+      if (child instanceof Konva.Shape) {
+        this.timelineConfig.elementosKonva!.push(
+          this.serializeKonvaElement(child)
+        );
+      }
+    });
+
+    // ✅ PASO 2: Generar portada automática si no hay una
+    let portadaUrl: string | undefined;
+    if (!this.portadaArchivo) {
+      await this.generarPortadaDesdeProyecto();
+    }
+
+    // ✅ PASO 3: Generar thumbnail
+    const thumbnail = await this.templateService.generateThumbnail(this.stage);
+
+    // ✅ PASO 4: Preparar categoría
+    const categoria = this.selectedCategoria || this.templateCategory;
+
+    // ✅ PASO 5: Crear objeto de plantilla (SIN portadaUrl aún)
+    const template: AdminTemplate = {
+      nombre: this.templateName,
+      descripcion: this.templateDescription,
+      categoria: categoria,
+      esPublica: this.isPublic,
+      configuracionVisual: {
+        canvasWidth: this.canvasWidth,
+        canvasHeight: this.canvasHeight,
+        backgroundColor: this.backgroundColor,
+        lineaDeTiempo: this.timelineConfig,
+        zonasEventos: this.eventZones,
+        elementosDecorativos: this.decorativeElements,
+        // portadaUrl se agregará después de subirla
+        portadaUrl: portadaUrl
+      },
+      metadatos: {
+        fechaCreacion: new Date(),
+        fechaModificacion: new Date(),
+        creadoPor: usuarioId,
+        version: '1.0',
+        vecesUsada: 0,
+        thumbnail: thumbnail,
+        // portadaUrl se agregará después
+        portadaUrl: portadaUrl, // ✅ También en metadatos
+        portada: this.portadaArchivo?.name
+      }
+    };
+
+    console.log('💾 Guardando plantilla base...');
+
+    let plantillaId: number;
+
+    // ✅ PASO 6: Guardar/actualizar plantilla PRIMERO para obtener el ID
+    if (this.currentTemplateId) {
+      // Actualizar plantilla existente
+      await lastValueFrom(
+        this.templateService.updateTemplate(this.currentTemplateId, template)
+      );
+      plantillaId = this.currentTemplateId;
+      console.log('✅ Plantilla base actualizada (ID:', plantillaId, ')');
+    } else {
+      // Crear nueva plantilla
+      const response = await lastValueFrom(
+        this.templateService.createTemplate(template)
+      );
+      plantillaId = response.id;
+      this.currentTemplateId = plantillaId;
+      console.log('✅ Plantilla base creada (ID:', plantillaId, ')');
+    }
+
+    // ✅ PASO 7: Ahora SÍ subir la portada (ya tenemos el ID garantizado)
+    if (this.portadaArchivo && plantillaId) {
+      try {
+        console.log('📤 Subiendo portada de plantilla...');
+        console.log('   Usuario ID:', usuarioId);
+        console.log('   Plantilla ID:', plantillaId);
+        console.log('   Archivo:', this.portadaArchivo.name);
+        
+        const respuesta = await lastValueFrom(
+          this.archivoService.subirPortadaPlantillaAdmin(
+            this.portadaArchivo, 
+            usuarioId, 
+            plantillaId
+          )
+        );
+
+        const portadaUrl = this.archivoService.obtenerUrlDesdeRespuesta(respuesta);
+        console.log('✅ Portada subida exitosamente');
+        console.log('   URL obtenida:', portadaUrl);
+
+        
+
+        // ✅ PASO 8: Actualizar el objeto template con la portada
+        template.id = plantillaId; // Asegurar que tenga el ID
+        template.metadatos.portadaUrl = portadaUrl;
+        template.metadatos.portada = this.portadaArchivo.name;
+        template.configuracionVisual.portadaUrl = portadaUrl;
+        
+        console.log('📝 Template con portada ANTES de enviar:', {
+          id: template.id,
+          metadatos_portadaUrl: template.metadatos.portadaUrl,
+          configuracionVisual_portadaUrl: template.configuracionVisual.portadaUrl,
+          configuracionVisual_completo: template.configuracionVisual
+        });
+        
+        console.log('🔍 configuracionVisual serializado:', 
+          JSON.stringify(template.configuracionVisual)
+        );
+        
+        const resultadoActualizacion = await lastValueFrom(
+          this.templateService.updateTemplate(plantillaId, template)
+        );
+        
+        console.log('✅ Plantilla actualizada con portada');
+        console.log('📦 Respuesta del backend:', resultadoActualizacion);
+        
+      } catch (error) {
+        console.error('❌ Error subiendo portada:', error);
+        console.warn('⚠️ Plantilla guardada pero sin portada');
+        // No fallar todo el guardado por la portada
+      }
+    } else {
+      if (!this.portadaArchivo) {
+        console.warn('⚠️ No hay archivo de portada para subir');
+      }
+      if (!plantillaId) {
+        console.error('❌ No se pudo obtener el ID de la plantilla');
+      }
+    }
+
+    // ✅ PASO 9: Mensaje de éxito
+    const accion = this.currentTemplateId !== plantillaId ? 'creada' : 'actualizada';
+    alert(`✅ Plantilla ${accion} correctamente`);
+
+  } catch (error) {
+    console.error('❌ Error guardando plantilla:', error);
+    
+    // Mensaje de error más descriptivo
+    if (error instanceof Error) {
+      alert(`Error al guardar la plantilla: ${error.message}`);
+    } else {
+      alert('Error al guardar la plantilla');
+    }
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+onCategoriaChange(categoria: Categoria): void {
+    this.selectedCategoria = categoria;
+    this.templateCategory = categoria.nombre;
+  }
+  /*async saveTemplate(): Promise<void> {
+  if (!this.templateName.trim()) {
+    alert('Por favor, ingresa un nombre para la plantilla');
+    return;
+  }
+
+  if (this.eventZones.length === 0) {
+    alert('Por favor, define al menos una zona de evento');
+    return;
+  }
+
+  this.isSaving = true;
+
+  try {
+    // Obtener usuario actual
+    const usuarioActual = await this.obtenerUsuarioActual();
+    const usuarioId = usuarioActual?.id || 1; // Usar 1 como fallback si no se encuentra usuario
+
+    // Serializar línea de tiempo
+    this.timelineConfig.elementosKonva = [];
+    this.timelineLayer.children?.forEach((child: Konva.Node) => {
+      if (child instanceof Konva.Shape) {
+        this.timelineConfig.elementosKonva!.push(
+          this.serializeKonvaElement(child)
+        );
+      }
+    });
+
+    // Generar thumbnail
+    const thumbnail = await this.templateService.generateThumbnail(this.stage);
+
+    // Crear objeto de plantilla
+    const template: AdminTemplate = {
+      nombre: this.templateName,
+      descripcion: this.templateDescription,
+      categoria: this.templateCategory,
+      esPublica: this.isPublic,
+      configuracionVisual: {
+        canvasWidth: this.canvasWidth,
+        canvasHeight: this.canvasHeight,
+        backgroundColor: this.backgroundColor,
+        lineaDeTiempo: this.timelineConfig,
+        zonasEventos: this.eventZones,
+        elementosDecorativos: this.decorativeElements
+      },
+      metadatos: {
+        fechaCreacion: new Date(),
+        fechaModificacion: new Date(),
+        creadoPor: usuarioId, // Usar el ID del usuario obtenido
+        version: '1.0',
+        vecesUsada: 0,
+        thumbnail: thumbnail
+      }
+    };
+
+    // Guardar en servidor
+    if (this.currentTemplateId) {
+      await lastValueFrom(
+        this.templateService.updateTemplate(this.currentTemplateId, template)
+      );
+      alert('✅ Plantilla actualizada correctamente');
+    } else {
+      const response = await lastValueFrom(
+        this.templateService.createTemplate(template)
+      );
+      this.currentTemplateId = response.id;
+      alert('✅ Plantilla guardada correctamente');
+    }
+
+  } catch (error) {
+    console.error('❌ Error guardando plantilla:', error);
+    alert('Error al guardar la plantilla');
+  } finally {
+    this.isSaving = false;
+  }
+}*/
 
   /**
    * Cargar plantilla existente
    */
   async loadTemplate(id: number): Promise<void> {
+    
+    
     try {
+      
       const template = await lastValueFrom(
         this.templateService.getTemplateById(id)
       );
@@ -2788,7 +3259,7 @@ private renderizarElementoPreview(group: Konva.Group, zone: ZonaEvento, elemento
       this.currentTemplateId = template.id;
       this.templateName = template.nombre;
       this.templateDescription = template.descripcion;
-      this.templateCategory = template.categoria;
+      this.selectedCategoria = template.categoria;
       this.isPublic = template.esPublica;
       this.backgroundColor = template.configuracionVisual.backgroundColor;
       
@@ -2796,7 +3267,7 @@ private renderizarElementoPreview(group: Konva.Group, zone: ZonaEvento, elemento
       this.clearCanvas();
       
       // Cargar configuración visual
-      this.canvasWidth = template.configuracionVisual.canvasWidth;
+     this.canvasWidth = template.configuracionVisual.canvasWidth;
       this.canvasHeight = template.configuracionVisual.canvasHeight;
       this.stage.width(this.canvasWidth);
       this.stage.height(this.canvasHeight);
@@ -2988,7 +3459,7 @@ private reconstructEventZones(): void {
   /**
    * Exportar plantilla como JSON (para debugging)
    */
-  exportTemplateAsJSON(): void {
+  /*exportTemplateAsJSON(): void {
     const template: AdminTemplate = {
       nombre: this.templateName,
       descripcion: this.templateDescription,
@@ -3021,7 +3492,7 @@ private reconstructEventZones(): void {
     link.click();
     
     URL.revokeObjectURL(url);
-  }
+  }*/
 
   /**
    * Importar plantilla desde JSON (para debugging)
@@ -3037,7 +3508,7 @@ private reconstructEventZones(): void {
       
       this.templateName = template.nombre;
       this.templateDescription = template.descripcion;
-      this.templateCategory = template.categoria;
+      this.selectedCategoria = template.categoria;
       this.isPublic = template.esPublica;
       this.backgroundColor = template.configuracionVisual.backgroundColor;
       

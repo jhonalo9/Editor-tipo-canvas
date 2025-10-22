@@ -9,6 +9,7 @@ export interface Plantilla {
   nombre: string;
   descripcion: string;
   data: any; // Puede ser string JSON u objeto
+  favorito:boolean;
   estado: string;
   esPublica: boolean;
   creadoPorId: number;
@@ -23,6 +24,25 @@ export interface PlantillaRequest {
   data: any;
   portadaUrl?: string;
   esPublica?: boolean;
+}
+
+
+export interface PlantillaEstadisticaDTO {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  data: any;
+  esPublica: boolean;
+  creadoPorNombre: string;
+  fechaCreacion: string;
+  portadaUrl?: string;
+  
+  // Estadísticas
+  totalFavoritos: number;
+  totalUsos: number;
+  vecesUtilizada: number;
+  promedioCalificacion?: number;
+  // Puedes agregar más campos según lo que retorne tu backend
 }
 
 @Injectable({
@@ -41,6 +61,18 @@ export class PlantillaService {
     });
   }
 
+
+  // ✅ MÉTODO NUEVO: Obtener plantillas populares
+  getPlantillasPopulares(): Observable<PlantillaEstadisticaDTO[]> {
+    return this.http.get<PlantillaEstadisticaDTO[]>(`${this.apiUrl}/populares`);
+  }
+
+  // ✅ MÉTODO NUEVO: Obtener plantillas populares con autenticación (si es necesario)
+  getPlantillasPopularesAdmin(): Observable<PlantillaEstadisticaDTO[]> {
+    return this.http.get<PlantillaEstadisticaDTO[]>(`${this.apiUrl}/populares`, { 
+      headers: this.getAuthHeaders() 
+    });
+  }
   getPlantillasPublicas(): Observable<Plantilla[]> {
     return this.http.get<Plantilla[]>(`${this.apiUrl}/publicas`);
   }

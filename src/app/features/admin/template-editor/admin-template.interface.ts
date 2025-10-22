@@ -1,9 +1,23 @@
+export interface Categoria {
+  idCategoria: number;
+  nombre: string;
+  descripcion?: string;
+  estado: string;
+  plantillas?: any[]; // Opcional, si viene del backend
+}
+
+
+
+
+
+
+
 
 export interface AdminTemplate {
   id?: number;
   nombre: string;
   descripcion: string;
-  categoria: 'educativa' | 'corporativa' | 'historica' | 'personal' | 'otra';
+  categoria: Categoria; 
   esPublica: boolean;
   
   // Configuración visual
@@ -23,6 +37,7 @@ export interface AdminTemplate {
     
     // Elementos decorativos (opcional)
     elementosDecorativos?: ElementoDecorativo[];
+    portadaUrl?: string;
   };
   
   // Metadatos
@@ -33,6 +48,8 @@ export interface AdminTemplate {
     version: string;
     vecesUsada: number;
     thumbnail?: string; // Preview de la plantilla
+    portadaUrl?:string;
+    portada?:string;
   };
 }
 
@@ -136,56 +153,6 @@ export interface LineaDeTiempoConfig {
   turns: number;
   length: number;
 }
-
-/**
- * Zona donde se colocarán los eventos
- */
-/*export interface ZonaEvento {
-  id: string;
-  nombre: string;
-  
-  posicion: {
-    x: number;
-    y: number;
-    anchoMaximo?: number;
-    altoMaximo?: number;
-  };
-  
-  contenedor: {
-    tipo: 'circle' | 'rectangle' | 'custom';
-    radio?: number;
-    width?: number;
-    height?: number;
-    cornerRadius?: number;
-    fill?: string;
-    stroke?: string;
-    strokeWidth?: number;
-    shadow?: ShadowConfig;
-  };
-  
-  // CAMBIO: Hacer el layout requerido en lugar de opcional
-  layout: {
-    imagen: ElementoLayout;
-    titulo: ElementoLayout;
-    descripcion: ElementoLayout;
-    fecha: ElementoLayout;
-    link?: ElementoLayout;
-  };
-  
-  conector?: {
-    mostrar: boolean;
-    tipo: 'line' | 'curve' | 'arrow';
-    puntoInicio: { x: number; y: number };
-    puntoFin: { x: number; y: number };
-    estilo: {
-      stroke: string;
-      strokeWidth: number;
-      dashArray?: number[];
-    };
-  };
-  
-  orden: number;
-}*/
 
 
 
@@ -297,10 +264,12 @@ export interface ShadowConfig {
 export interface AdminTemplateRequest {
   nombre: string;
   descripcion: string;
-  categoria: string;
+  data: string;
   esPublica: boolean;
-  configuracionVisual: string; // JSON serializado
-  thumbnail?: string;
+  categoria: {
+    idCategoria: number;
+  };
+  
 }
 
 /**
@@ -310,15 +279,19 @@ export interface AdminTemplateResponse {
   id: number;
   nombre: string;
   descripcion: string;
-  categoria: string;
+  data: string;
   esPublica: boolean;
-  configuracionVisual: string;
-  thumbnail?: string;
-  metadatos: {
+  categoria: Categoria;
+  creadoPor: any;
+  fechaCreacion: string;
+  estado: string;
+  //configuracionVisual: string;
+  //thumbnail?: string;
+  /*metadatos: {
     fechaCreacion: string;
     fechaModificacion: string;
     creadoPor: number;
     version: string;
     vecesUsada: number;
-  };
+  };*/
 }

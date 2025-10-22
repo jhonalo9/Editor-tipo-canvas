@@ -355,6 +355,8 @@ currentEventDesign!: EventDesign;
     
   this.setupMouseWheelZoom();
 
+  this.cargarPlantillaDesdeServicio();
+
     this.route.queryParams.subscribe(params => {
     const proyectoId = params['proyecto'];
     
@@ -377,6 +379,100 @@ currentEventDesign!: EventDesign;
   }
 
 
+  private cargarPlantillaDesdeServicio(): void {
+  const proyectoTemporal = this.proyectoService.getProyectoTemporal();
+  
+  if (!proyectoTemporal) {
+    console.log('ℹ️ No hay datos temporales');
+    return;
+  }
+
+  console.log('🎨 Cargando datos temporales COMPLETOS:', proyectoTemporal);
+  console.log('🔍 Estructura de plantillaData:', proyectoTemporal.plantillaData);
+
+  // Establecer título y descripción
+  this.proyectoNombre = proyectoTemporal.titulo || 'Mi Proyecto';
+  this.proyectoDescripcion = proyectoTemporal.descripcion || 'Descripción del proyecto';
+
+  // Actualizar elementos de texto en el canvas
+  this.crearElementosProyecto();
+
+  // ✅ Cargar plantilla si existe
+  if (proyectoTemporal.plantillaData) {
+    console.log('📥 Aplicando plantilla:', proyectoTemporal.plantillaData.nombre);
+    
+    // ✅ DEBUG: Mostrar estructura completa de data
+    if (proyectoTemporal.plantillaData.data) {
+      console.log('📊 Estructura de data:', {
+        tieneLineaDeTiempo: !!proyectoTemporal.plantillaData.data.lineaDeTiempo,
+        tieneZonasEventos: !!proyectoTemporal.plantillaData.data.zonasEventos,
+        tieneElementosDecorativos: !!proyectoTemporal.plantillaData.data.elementosDecorativos,
+        dataCompleta: proyectoTemporal.plantillaData.data
+      });
+    }
+    
+    this.aplicarPlantillaCompleta(proyectoTemporal.plantillaData);
+  } else {
+    console.log('⚪ No hay plantilla para aplicar');
+  }
+}
+
+
+private aplicarPlantillaCompleta(plantillaData: any): void {
+  try {
+    console.log('📥 Aplicando plantilla completa:', plantillaData);
+    console.log('🔍 Estructura de data:', plantillaData.data);
+
+    // ✅ VALIDAR DATA EXISTA
+    if (!plantillaData.data) {
+      throw new Error('plantillaData.data es undefined');
+    }
+
+    // Limpiar editor actual
+    this.limpiarCompletamenteLineaTiempo();
+
+    // 1. Cargar configuración visual - CORREGIDO: usar data directamente
+    if (plantillaData.data.canvasWidth && plantillaData.data.canvasHeight) {
+      console.log('🎨 Cargando configuración de canvas...');
+      this.cargarConfiguracionVisual({
+        canvasWidth: plantillaData.data.canvasWidth,
+        canvasHeight: plantillaData.data.canvasHeight,
+        backgroundColor: plantillaData.data.backgroundColor
+      });
+    }
+
+    // 2. Cargar diseño de línea de tiempo - CORREGIDO: buscar en data.lineaDeTiempo
+    if (plantillaData.data.lineaDeTiempo) {
+      console.log('🔧 Aplicando línea de tiempo:', plantillaData.data.lineaDeTiempo);
+      this.convertirLineaTiempoConfig(plantillaData.data.lineaDeTiempo);
+      this.renderTimelineBase();
+    } else {
+      console.warn('⚠️ No hay línea de tiempo en la plantilla, usando diseño por defecto');
+      this.renderTimelineBase();
+    }
+
+    // 3. Cargar elementos decorativos - CORREGIDO: buscar en data.elementosDecorativos
+    if (plantillaData.data.elementosDecorativos) {
+      console.log('🎨 Aplicando elementos decorativos:', plantillaData.data.elementosDecorativos.length);
+      this.cargarElementosDecorativos(plantillaData.data.elementosDecorativos);
+    }
+
+    // 4. Guardar zonas para eventos futuros - CORREGIDO: buscar en data.zonasEventos
+    if (plantillaData.data.zonasEventos) {
+      console.log('📍 Guardando zonas de eventos:', plantillaData.data.zonasEventos.length);
+      this.guardarZonasPlantilla(plantillaData.data.zonasEventos);
+    }
+
+    console.log('✅ Plantilla aplicada correctamente');
+    this.mostrarMensaje('✅ Plantilla cargada. Ahora puedes agregar eventos.');
+
+  } catch (error) {
+    console.error('❌ Error aplicando plantilla:', error);
+    console.log('🔄 Usando diseño por defecto como fallback');
+    this.renderTimelineBase();
+    this.mostrarMensaje('Plantilla cargada con configuración básica');
+  }
+}
 
   
 
@@ -1030,6 +1126,11 @@ private async procesarImagenesEventos(usuarioId: number, esProyectoNuevo: boolea
       return;
     }
 
+     const proyectoTemporal = this.proyectoService.getProyectoTemporal();
+    const plantillaId = proyectoTemporal?.plantillaId || null;
+
+    console.log('🔍 Plantilla ID a usar:', plantillaId);
+
     // ✅ OBTENER PORTADA ANTERIOR SI ES ACTUALIZACIÓN
     let portadaAnteriorUrl = '';
     if (this.proyectoActualId) {
@@ -1093,7 +1194,7 @@ private async procesarImagenesEventos(usuarioId: number, esProyectoNuevo: boolea
       titulo: this.proyectoNombre,
       descripcion: this.proyectoDescripcion,
       data: dataSerializada,
-      plantillaBaseId: 1
+      plantillaBaseId: plantillaId 
     };
 
     let proyectoGuardado;
@@ -1177,7 +1278,7 @@ private async procesarImagenesEventos(usuarioId: number, esProyectoNuevo: boolea
       titulo: this.proyectoNombre,
       descripcion: this.proyectoDescripcion,
       data: this.proyectoService.serializarData(proyectoDataFinal),
-      plantillaBaseId: 1
+       plantillaBaseId: proyectoTemporal?.plantillaId || 0 
     };
 
     // Actualizar proyecto con datos finales
@@ -2092,6 +2193,10 @@ private clearResizeHandles(): void {
 
   async actualizarProyecto(id: number): Promise<void> {
   try {
+
+    const proyectoTemporal = this.proyectoService.getProyectoTemporal();
+    const plantillaId = proyectoTemporal?.plantillaId || null;
+
     const proyectoData: ProyectoData = {
       metadata: {
         nombre: this.proyectoNombre,
@@ -2122,7 +2227,7 @@ private clearResizeHandles(): void {
       titulo: this.proyectoNombre,
       descripcion: this.proyectoDescripcion,
       data: this.proyectoService.serializarData(proyectoData),
-      plantillaBaseId: 1
+      plantillaBaseId: plantillaId
     };
 
     // Usar lastValueFrom en lugar de toPromise()
@@ -2207,6 +2312,9 @@ private clearResizeHandles(): void {
       return;
     }
 
+    const proyectoTemporal = this.proyectoService.getProyectoTemporal();
+    const plantillaId = proyectoTemporal?.plantillaId || null;
+
     // 1. Obtener datos actuales del proyecto para eliminar portada anterior si es necesario
     const proyectoActual = await lastValueFrom(
       this.proyectoService.getProyectoById(this.proyectoActualId)
@@ -2274,7 +2382,7 @@ private clearResizeHandles(): void {
       titulo: this.proyectoNombre,
       descripcion: this.proyectoDescripcion,
       data: this.proyectoService.serializarData(proyectoData),
-      plantillaBaseId: 1
+      plantillaBaseId: plantillaId
     };
 
     const proyectoActualizado = await lastValueFrom(
@@ -2633,27 +2741,33 @@ importarPlantillaDesdeArchivo(event: any): void {
 
 
 
-
+private zonasPlantilla: any[] = [];
 
 private cargarPlantillaDesdeJSON(plantillaJSON: any): void {
   try {
     console.log('📥 Cargando plantilla desde JSON...', plantillaJSON);
 
-     if (plantillaJSON.configuracionVisual?.lineaDeTiempo) {
-      this.cargarConfiguracionLineaTiempo(plantillaJSON.configuracionVisual.lineaDeTiempo);
+    // ✅ SOLO CARGAR CONFIGURACIÓN VISUAL, NO CREAR EVENTOS
+    this.cargarConfiguracionVisual(plantillaJSON.configuracionVisual);
+    this.limpiarPlantillaAnterior();
+    this.limpiarCompletamenteLineaTiempo();
+    
+    if (plantillaJSON.configuracionVisual?.lineaDeTiempo) {
+      console.log('🔧 Aplicando configuración de línea de tiempo...', plantillaJSON.configuracionVisual.lineaDeTiempo);
+      this.convertirLineaTiempoConfig(plantillaJSON.configuracionVisual.lineaDeTiempo);
+      console.log('🎨 Renderizando línea con diseño:', this.currentTimelineDesign.layout.type);
+      this.renderTimelineBase();
     }
     
-
-    // 1. Cargar configuración visual básica
-    this.cargarConfiguracionVisual(plantillaJSON.configuracionVisual);
+    if (plantillaJSON.configuracionVisual.elementosDecorativos) {
+      this.cargarElementosDecorativos(plantillaJSON.configuracionVisual.elementosDecorativos);
+    }
     
-    // 2. Cargar elementos decorativos (línea principal, etc.)
-    this.cargarElementosDecorativos(plantillaJSON.configuracionVisual.elementosDecorativos);
+    // ✅ CRÍTICO: GUARDAR LAS ZONAS PERO NO CREAR EVENTOS AUTOMÁTICAMENTE
+    if (plantillaJSON.configuracionVisual.zonasEventos) {
+      this.guardarZonasPlantilla(plantillaJSON.configuracionVisual.zonasEventos);
+    }
     
-    // 3. Configurar zonas de eventos CON LA INFORMACIÓN REAL
-    this.configurarZonasEventos(plantillaJSON.configuracionVisual.zonasEventos);
-    
-    // 4. Actualizar el nombre y descripción del proyecto si están en el JSON
     if (plantillaJSON.nombre) {
       this.proyectoNombre = plantillaJSON.nombre;
     }
@@ -2661,16 +2775,37 @@ private cargarPlantillaDesdeJSON(plantillaJSON: any): void {
       this.proyectoDescripcion = plantillaJSON.descripcion;
     }
 
-    // 5. Re-renderizar la timeline con los eventos reales
-    this.renderTimelineEvents();
+    // ✅ NO renderizar eventos automáticamente
+    // this.renderTimelineEvents();
     
-    console.log('✅ Plantilla cargada correctamente con eventos reales');
+    console.log('✅ Plantilla cargada correctamente (sin eventos)');
+    console.log('📊 Diseño actual:', {
+      id: this.currentTimelineDesign.id,
+      tipo: this.currentTimelineDesign.layout.type,
+      positionY: this.currentTimelineDesign.layout.positionY,
+      amplitude: this.currentTimelineDesign.layout.amplitude
+    });
+    
+    this.mostrarMensaje('✅ Plantilla cargada. Ahora puedes agregar eventos.');
     
   } catch (error) {
     console.error('❌ Error cargando plantilla:', error);
     this.mostrarMensaje('Error al cargar la plantilla', 'error');
   }
 }
+
+private guardarZonasPlantilla(zonas: any[]): void {
+  // ✅ SOLO GUARDAR LAS ZONAS PARA USO FUTURO, NO CREAR EVENTOS
+  this.zonasPlantilla = [...zonas];
+  console.log(`💾 Zonas de plantilla guardadas: ${this.zonasPlantilla.length} zonas`);
+  
+  // Limpiar eventos existentes
+  this.timelineEvents = [];
+  
+  console.log('✅ Plantilla lista. Los eventos aparecerán cuando el usuario los agregue.');
+}
+
+
 
 
 private cargarConfiguracionLineaTiempo(lineaConfig: any): void {
@@ -2727,6 +2862,9 @@ private aplicarPropiedadesLineaTiempo(lineaConfig: any): void {
       ...this.currentTimelineDesign,
       layout: {
         ...this.currentTimelineDesign.layout,
+        // ✅ AGREGADO: Guardar posiciones exactas para todos los tipos
+        positionX: lineaConfig.positionX,
+        positionY: lineaConfig.positionY,
         // Para líneas horizontales, usar positionY
         ...(lineaConfig.tipo === 'horizontal' && lineaConfig.positionY !== undefined && {
           orientation: this.calcularOrientacionDesdePosicionY(lineaConfig.positionY)
@@ -2741,7 +2879,8 @@ private aplicarPropiedadesLineaTiempo(lineaConfig: any): void {
         }),
         ...(lineaConfig.tipo === 'wave' && {
           amplitude: lineaConfig.intensity || 30,
-          frequency: 0.02
+          frequency: lineaConfig.frequency || 0.02,
+          positionY: lineaConfig.positionY // ✅ CRÍTICO para wave
         }),
         ...(lineaConfig.tipo === 'zigzag' && {
           amplitude: lineaConfig.intensity || 40,
@@ -2752,7 +2891,9 @@ private aplicarPropiedadesLineaTiempo(lineaConfig: any): void {
         }),
         ...(lineaConfig.tipo === 's-curve' && {
           amplitude: lineaConfig.intensity || 40,
-          segments: 20
+          segments: 20,
+          intensitycurva: lineaConfig.intensitycurva || 100,
+          anchoTotal: lineaConfig.anchoTotal || 1110
         })
         
       }
@@ -2864,6 +3005,11 @@ private crearEventoDesdeZona(zona: any, orden: number): void {
   let descripcion = 'Descripción del evento...';
   let person = '';
   let link = '';
+  let imagenUrl = '';
+  const elementoImagen = elementos.find((elem: any) => elem.tipo === 'imagen');
+  if (elementoImagen && elementoImagen.configuracion?.src) {
+    imagenUrl = elementoImagen.configuracion.src;
+  }
 
    elementos.forEach((elemento: any) => {
     if (elemento.configuracion && elemento.configuracion.texto) {
@@ -2892,6 +3038,7 @@ private crearEventoDesdeZona(zona: any, orden: number): void {
             person=elemento.configuracion.texto;
           }
           break;
+        
 
         case 'link':
           // ✅ CAPTURAR EL TEXTO DEL LINK SI EXISTE
@@ -2919,7 +3066,7 @@ private crearEventoDesdeZona(zona: any, orden: number): void {
     title: titulo,
     person: person,
     description: descripcion,
-    image: '',
+    image: imagenUrl,
     link: link
   };
   
@@ -3082,24 +3229,19 @@ private calcularAnioPorOrden(orden: number): number {
 
 
 private cargarConfiguracionVisual(configuracion: any): void {
-  // Configurar dimensiones del canvas
   this.canvasWidth = configuracion.canvasWidth;
   this.canvasHeight = configuracion.canvasHeight;
   this.backgroundColor = configuracion.backgroundColor;
   
-  // Actualizar stage
   this.stage.width(this.canvasWidth);
   this.stage.height(this.canvasHeight);
   this.updateBackgroundColor(this.backgroundColor);
   
-  // ✅ NUEVO: Si no hay configuración específica de línea, usar la por defecto
-  if (!configuracion.lineaDeTiempo) {
-    console.log('ℹ️ No hay configuración específica de línea, usando diseño por defecto');
-    const defaultDesign = this.timelineDesignService.getTimelineDesignById(this.selectedTimelineDesignId);
-    if (defaultDesign) {
-      this.currentTimelineDesign = defaultDesign;
-    }
-  }
+  console.log('✅ Configuración visual aplicada:', {
+    width: this.canvasWidth,
+    height: this.canvasHeight,
+    backgroundColor: this.backgroundColor
+  });
 }
 
 
@@ -4094,7 +4236,7 @@ saveAsTemplate(): void {
   }
 
   // ========== MÉTODOS KONVA ==========
-   initKonva(): void {
+    initKonva(): void {
     const width = this.container.nativeElement.offsetWidth;
     const height = this.container.nativeElement.offsetHeight;
 
@@ -4111,7 +4253,7 @@ saveAsTemplate(): void {
     this.stage.add(this.mainLayer);
 
     this.updateBackgroundColor(this.backgroundColor);
-    this.drawTimelineBase();
+    this.renderTimelineBase();
   }
 
   updateBackgroundColor(color: string): void {
@@ -4154,13 +4296,15 @@ private limpiarFondoSeguro(): void {
 //################################################
 
   drawTimelineBase(): void {
-    const timeline = new Konva.Line({
+    /*const timeline = new Konva.Line({
       points: [50, this.stage.height() / 2, this.stage.width() - 50, this.stage.height() / 2],
       stroke: '#070707ff',
       strokeWidth: 5,
       lineCap: 'round'
     });
-    this.mainLayer.add(timeline);
+    this.mainLayer.add(timeline);*/
+
+    this.renderTimelineBase();
   }
 //################################################
 
@@ -4339,31 +4483,21 @@ private configurarEventosTimeline(group: Konva.Group, event: TimelineEvent,posit
 private aplicarDiseñoPlantilla(group: Konva.Group, event: TimelineEvent, zonaDesign: any): void {
   console.log('📐 Diseño de zona:', zonaDesign);
   
-  // ✅ PRIMERO: Crear contenedor si está configurado
-  if (zonaDesign.contenedor && zonaDesign.contenedor.visible !== false) {
-    const contenedor = new Konva.Rect({
-      x: 0, // ← RELATIVO AL GRUPO, no a zonaDesign.posicion
-      y: 0,
-      width: zonaDesign.posicion.anchoMaximo,
-      height: zonaDesign.posicion.altoMaximo,
-      fill: zonaDesign.contenedor.fill || 'transparent',
-      stroke: zonaDesign.contenedor.stroke || '#3498db',
-      strokeWidth: zonaDesign.contenedor.strokeWidth || 2,
-      cornerRadius: zonaDesign.contenedor.cornerRadius || 4
-    });
-    group.add(contenedor);
-  }
+  // ✅ ESTABLECER POSICIÓN DEL GRUPO PRIMERO
+  const posicionZona = zonaDesign.posicion;
+  group.position({ 
+    x: posicionZona.x, 
+    y: posicionZona.y 
+  });
 
-  // ✅ SEGUNDO: Crear elementos de la plantilla CON LOS TEXTOS REALES
+  // ✅ LUEGO crear elementos con coordenadas RELATIVAS al grupo
   if (zonaDesign.elementos && Array.isArray(zonaDesign.elementos)) {
     zonaDesign.elementos.forEach((elemento: any) => {
       this.crearElementoDesdePlantilla(group, elemento, event);
     });
-  } else {
-    console.warn('⚠️ No hay elementos en zonaDesign:', zonaDesign);
   }
 
-  console.log(`✅ Diseño aplicado para: ${event.title}`);
+  console.log(`✅ Diseño aplicado para: ${event.title} en posición (${posicionZona.x}, ${posicionZona.y})`);
 }
 
 
@@ -4397,15 +4531,12 @@ private extraerTextoDeElementos(zona: any): { titulo: string, fecha: string, des
 
 
 private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: TimelineEvent): void {
-  let konvaElement: Konva.Shape | null = null;
-
-  // Determinar qué texto usar basado en el tipo y si es un placeholder
-  let textoParaMostrar = elemento.configuracion?.texto || '';
+  let konvaElement: Konva.Shape | Konva.Group | null = null;
 
   switch (elemento.tipo) {
     case 'contenedor':
       konvaElement = new Konva.Rect({
-        x: elemento.x, // ← Ya es relativo
+        x: elemento.x,
         y: elemento.y,
         width: elemento.width,
         height: elemento.height,
@@ -4419,11 +4550,11 @@ private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: Ti
       break;
       
     case 'titulo':
-      textoParaMostrar = event.title || 'Nuevo Evento';
+      const tituloTexto = event.title || 'Nuevo Evento';
       konvaElement = new Konva.Text({
         x: elemento.x,
         y: elemento.y,
-        text: textoParaMostrar,
+        text: tituloTexto,
         fontSize: elemento.configuracion.fontSize,
         fontFamily: elemento.configuracion.fontFamily,
         fill: elemento.configuracion.color,
@@ -4437,11 +4568,11 @@ private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: Ti
       break;
       
     case 'fecha':
-      textoParaMostrar = event.year.toString();
+      const fechaTexto = event.year.toString();
       konvaElement = new Konva.Text({
         x: elemento.x,
         y: elemento.y,
-        text: textoParaMostrar,
+        text: fechaTexto,
         fontSize: elemento.configuracion.fontSize,
         fontFamily: elemento.configuracion.fontFamily,
         fill: elemento.configuracion.color,
@@ -4453,16 +4584,36 @@ private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: Ti
         visible: elemento.visible !== false
       });
       break;
-      
+       case 'personaje':
+      // ✅ NUEVO: Crear elemento de personaje
+      const personajeTexto = event.person || 'Agregar personaje...';
+      konvaElement = new Konva.Text({
+        x: elemento.x,
+        y: elemento.y,
+        text: personajeTexto,
+        fontSize: elemento.configuracion.fontSize,
+        fontFamily: elemento.configuracion.fontFamily,
+        fill: elemento.configuracion.color,
+        fontStyle: elemento.configuracion.fontWeight,
+        align: elemento.configuracion.textAlign as any,
+        width: elemento.width,
+        height: elemento.height,
+        rotation: elemento.configuracion.rotation || 0,
+        visible: elemento.visible !== false
+      });
+      break;
+
     case 'descripcion':
-      textoParaMostrar = event.description || '';
+      // ✅ NUEVO: Crear elemento de descripción
+      const descripcionTexto = event.description || 'Agregar descripción...';
       konvaElement = new Konva.Text({
         x: elemento.x,
         y: elemento.y,
-        text: textoParaMostrar,
+        text: descripcionTexto,
         fontSize: elemento.configuracion.fontSize,
         fontFamily: elemento.configuracion.fontFamily,
         fill: elemento.configuracion.color,
+        fontStyle: elemento.configuracion.fontWeight,
         align: elemento.configuracion.textAlign as any,
         width: elemento.width,
         height: elemento.height,
@@ -4470,47 +4621,811 @@ private crearElementoDesdePlantilla(group: Konva.Group, elemento: any, event: Ti
         visible: elemento.visible !== false
       });
       break;
-      
-    case 'personaje':
-      textoParaMostrar = event.person || '';
-      konvaElement = new Konva.Text({
-        x: elemento.x,
-        y: elemento.y,
-        text: textoParaMostrar,
-        fontSize: elemento.configuracion.fontSize,
-        fontFamily: elemento.configuracion.fontFamily,
-        fill: elemento.configuracion.color,
-        align: elemento.configuracion.textAlign as any,
-        width: elemento.width,
-        height: elemento.height,
-        rotation: elemento.configuracion.rotation || 0,
-        visible: elemento.visible !== false
-      });
-      break;
-      
+
     case 'link':
-      textoParaMostrar = this.obtenerTextoParaEnlace(elemento, event);
-      konvaElement = this.crearElementoLink(elemento, textoParaMostrar, event);
+      // ✅ NUEVO: Crear elemento de link
+      konvaElement = this.crearElementoLink(elemento, event);
       break;
       
-    case 'forma':
-      konvaElement = this.crearFormaDesdePlantilla(elemento);
+    case 'imagen':
+      // ✅ CREAR DIRECTAMENTE LA FORMA SIN GRUPO ADICIONAL
+      if (event.image) {
+        konvaElement = this.crearImagenDirecta(elemento, event.image);
+      } else {
+        konvaElement = this.crearPlaceholderImagenDirecto(elemento);
+      }
       break;
   }
 
   if (konvaElement) {
     konvaElement.setAttr('elementoTipo', elemento.tipo);
     konvaElement.setAttr('elementoId', elemento.id);
-    konvaElement.setAttr('textoOriginal', elemento.configuracion?.texto);
-
-    if (elemento.tipo === 'link' && event.link) {
-      konvaElement.setAttr('linkUrl', event.link);
-    }
-
     group.add(konvaElement);
   }
 }
 
+
+
+private crearImagenDirecta(elemento: any, imageUrl: string): Konva.Shape {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const width = elemento.width;
+  const height = elemento.height;
+  const stroke = elemento.configuracion?.stroke || '#000000';
+  const strokeWidth = elemento.configuracion?.strokeWidth || 2;
+
+  let placeholder: Konva.Shape;
+
+  switch (forma) {
+    case 'circulo':
+      // ✅ USAR coordenadas EXACTAS del JSON sin modificar
+      placeholder = new Konva.Circle({
+         x: elemento.x + width / 2,  // Posición X relativa + centro
+        y: elemento.y + height / 2, // Posición Y relativa + centro
+        radius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+      break;
+
+    case 'estrella':
+      placeholder = new Konva.Star({
+        x: elemento.x + width / 2,
+        y: elemento.y + height / 2,
+        numPoints: 5,
+        innerRadius: Math.min(width, height) * 0.4,
+        outerRadius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+      break;
+
+    case 'rombo':
+      // ✅ Puntos relativos exactamente como en la plantilla
+       const points = [
+        elemento.x + width / 2, elemento.y,           // top
+        elemento.x + width, elemento.y + height / 2,  // right
+        elemento.x + width / 2, elemento.y + height,  // bottom
+        elemento.x, elemento.y + height / 2          // left
+      ];
+      placeholder = new Konva.Line({
+        points: points,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        closed: true
+      });
+      break;
+
+    case 'rectangulo':
+    default:
+      placeholder = new Konva.Rect({
+        x: elemento.x,  // Posición X exacta del JSON
+        y: elemento.y,  // Posición Y exacta del JSON
+        width: width,
+        height: height,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        cornerRadius: elemento.configuracion?.borderRadius || 0
+      });
+      break;
+  }
+
+  // Cargar imagen en segundo plano y reemplazar placeholder
+  this.cargarYReemplazarImagenDirecta(elemento, imageUrl, placeholder);
+
+  return placeholder;
+}
+
+
+private cargarYReemplazarImagenDirecta(elemento: any, imageUrl: string, placeholder: Konva.Shape): void {
+  const imageObj = new Image();
+  
+  imageObj.onload = () => {
+    try {
+      const forma = elemento.configuracion?.forma || 'rectangulo';
+      const width = elemento.width;
+      const height = elemento.height;
+      const stroke = elemento.configuracion?.stroke || '#000000';
+      const strokeWidth = elemento.configuracion?.strokeWidth || 2;
+
+      let imagenFinal: Konva.Shape;
+
+      switch (forma) {
+        case 'circulo':
+          imagenFinal = new Konva.Circle({
+           x: elemento.x + width / 2,  // ✅ Misma posición que el placeholder
+            y: elemento.y + height / 2,
+            radius: Math.min(width, height) / 2,
+            fillPatternImage: imageObj,
+            fillPatternOffset: { x: imageObj.width / 2, y: imageObj.height / 2 },
+            fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+            stroke: stroke,
+            strokeWidth: strokeWidth
+          });
+          break;
+
+        case 'estrella':
+          imagenFinal = new Konva.Star({
+              x: elemento.x + width / 2,
+            y: elemento.y + height / 2,
+            numPoints: 5,
+            innerRadius: Math.min(width, height) * 0.4,
+            outerRadius: Math.min(width, height) / 2,
+            fillPatternImage: imageObj,
+            fillPatternOffset: { x: imageObj.width / 2, y: imageObj.height / 2 },
+            fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+            stroke: stroke,
+            strokeWidth: strokeWidth
+          });
+          break;
+
+        case 'rombo':
+          const points = [
+            elemento.x + width / 2, elemento.y,
+            elemento.x + width, elemento.y + height / 2,
+            elemento.x + width / 2, elemento.y + height,
+            elemento.x, elemento.y + height / 2
+          ];
+          imagenFinal = new Konva.Line({
+            points: points,
+            closed: true,
+            fillPatternImage: imageObj,
+            fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+            stroke: stroke,
+            strokeWidth: strokeWidth
+          });
+          break;
+
+        case 'rectangulo':
+        default:
+          imagenFinal = new Konva.Image({
+             x: elemento.x,  // ✅ Posición exacta del JSON
+            y: elemento.y,
+            width: width,
+            height: height,
+            image: imageObj,
+            cornerRadius: elemento.configuracion?.borderRadius || 0
+          });
+          break;
+      }
+
+      // Reemplazar placeholder
+      const layer = placeholder.getLayer();
+      const parent = placeholder.getParent();
+      
+      if (parent) {
+        const index = parent.children?.indexOf(placeholder) || 0;
+        placeholder.destroy();
+        parent.add(imagenFinal);
+        
+        if (index > 0) {
+          imagenFinal.setZIndex(index);
+        }
+      }
+      
+      layer?.batchDraw();
+
+    } catch (error) {
+      console.error('Error creando imagen:', error);
+    }
+  };
+
+  imageObj.onerror = () => {
+    console.error('Error cargando imagen:', imageUrl);
+  };
+
+  imageObj.crossOrigin = 'Anonymous';
+  imageObj.src = imageUrl;
+}
+
+private crearPlaceholderImagenDirecto(elemento: any): Konva.Shape {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const width = elemento.width;
+  const height = elemento.height;
+  const stroke = elemento.configuracion?.stroke || '#dee2e6';
+  const strokeWidth = elemento.configuracion?.strokeWidth || 1;
+
+  switch (forma) {
+    case 'circulo':
+      return new Konva.Circle({
+        x: elemento.x + width / 2,
+        y: elemento.y + height / 2,
+        radius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'estrella':
+      return new Konva.Star({
+        x: elemento.x + width / 2,
+        y: elemento.y + height / 2,
+        numPoints: 5,
+        innerRadius: Math.min(width, height) * 0.4,
+        outerRadius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'rombo':
+      const points = [
+        elemento.x + width / 2, elemento.y,
+        elemento.x + width, elemento.y + height / 2,
+        elemento.x + width / 2, elemento.y + height,
+        elemento.x, elemento.y + height / 2
+      ];
+      return new Konva.Line({
+        points: points,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        closed: true
+      });
+
+    case 'rectangulo':
+    default:
+      return new Konva.Rect({
+        x: elemento.x,
+        y: elemento.y,
+        width: width,
+        height: height,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        cornerRadius: elemento.configuracion?.borderRadius || 0
+      });
+  }
+}
+
+
+
+
+private crearImagenDesdePlantilla(elemento: any, imageUrl: string): Konva.Group {
+  // ✅ CORRECCIÓN CRÍTICA: Ajustar posición según la forma
+  const posicion = this.normalizarPosicionSegunForma(elemento);
+  
+  const group = new Konva.Group({
+    x: posicion.x,  // ← Posición normalizada (siempre esquina superior izquierda)
+    y: posicion.y   // ← Posición normalizada
+  });
+
+  // Crear placeholder según la forma
+  const placeholder = this.crearPlaceholderSegunForma(elemento);
+  group.add(placeholder);
+
+  // Cargar imagen en segundo plano
+  this.cargarImagenBackground(elemento, imageUrl, group, placeholder);
+
+  return group;
+}
+
+private normalizarPosicionSegunForma(elemento: any): { x: number; y: number } {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const x = elemento.x;
+  const y = elemento.y;
+  const width = elemento.width;
+  const height = elemento.height;
+
+  console.log(`📐 Normalizando posición para ${forma}:`, { x, y, width, height });
+
+  switch (forma) {
+    case 'circulo':
+    case 'estrella':
+    case 'rombo':
+      // ✅ Para formas centradas: restar la mitad del tamaño para obtener esquina superior izquierda
+      const xNormalizado = x - width / 2;
+      const yNormalizado = y - height / 2;
+      console.log(`  → Convertido de centro a esquina: (${xNormalizado}, ${yNormalizado})`);
+      return {
+        x: xNormalizado,
+        y: yNormalizado
+      };
+
+    case 'rectangulo':
+    default:
+      // ✅ Para rectángulos: las coordenadas ya son esquina superior izquierda
+      console.log(`  → Manteniendo coordenadas (ya es esquina): (${x}, ${y})`);
+      return { x, y };
+  }
+}
+
+private calcularPosicionNormalizada(elemento: any): { x: number; y: number } {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const x = elemento.x;
+  const y = elemento.y;
+  const width = elemento.width;
+  const height = elemento.height;
+
+  switch (forma) {
+    case 'circulo':
+      // Para círculos, el JSON guarda el centro, pero el grupo necesita esquina superior izquierda
+      return {
+        x: x - width / 2,
+        y: y - height / 2
+      };
+
+    case 'estrella':
+      // Similar al círculo
+      return {
+        x: x - width / 2,
+        y: y - height / 2
+      };
+
+    case 'rombo':
+      // Similar al círculo
+      return {
+        x: x - width / 2,
+        y: y - height / 2
+      };
+
+    case 'rectangulo':
+    default:
+      // Para rectángulos, el JSON ya guarda la esquina superior izquierda
+      return { x, y };
+  }
+}
+
+private crearPlaceholderSegunForma(elemento: any): Konva.Shape {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const width = elemento.width;
+  const height = elemento.height;
+  const stroke = elemento.configuracion?.stroke || '#000000';
+  const strokeWidth = elemento.configuracion?.strokeWidth || 2;
+
+  switch (forma) {
+    case 'circulo':
+      // ✅ Dibujar desde el centro del área del grupo
+      return new Konva.Circle({
+        x: width / 2,      // Centro horizontal del área
+        y: height / 2,     // Centro vertical del área
+        radius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'estrella':
+      return new Konva.Star({
+        x: width / 2,      // Centro del área
+        y: height / 2,     // Centro del área
+        numPoints: 5,
+        innerRadius: Math.min(width, height) * 0.4,
+        outerRadius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'rombo':
+      // ✅ Puntos del rombo relativos al área del grupo (0,0 a width,height)
+      return new Konva.Line({
+        points: [
+          width / 2, 0,           // top (centro superior)
+          width, height / 2,      // right (centro derecho)
+          width / 2, height,      // bottom (centro inferior)
+          0, height / 2          // left (centro izquierdo)
+        ],
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        closed: true
+      });
+
+    case 'rectangulo':
+    default:
+      // ✅ Rectángulo desde la esquina (0,0) del grupo
+      return new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: width,
+        height: height,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        cornerRadius: elemento.configuracion?.borderRadius || 0
+      });
+  }
+}
+private cargarYReemplazarImagen(elemento: any, imageUrl: string, imageGroup: Konva.Group, placeholder: Konva.Rect): void {
+  const imageObj = new Image();
+  
+  imageObj.onload = () => {
+    try {
+      // Crear la imagen Konva
+      const konvaImage = new Konva.Image({
+        width: elemento.width,
+        height: elemento.height,
+        image: imageObj,
+        cornerRadius: elemento.configuracion?.borderRadius || 0,
+        perfectDrawEnabled: false,
+        listening: false
+      });
+
+      // Aplicar objectFit si es necesario
+      this.aplicarObjectFit(konvaImage, imageObj, elemento.configuracion?.objectFit);
+
+      // Reemplazar placeholder con la imagen real
+      placeholder.destroy();
+      imageGroup.children?.forEach(child => {
+        if (child instanceof Konva.Text) child.destroy();
+      });
+      
+      imageGroup.add(konvaImage);
+      imageGroup.getLayer()?.batchDraw();
+
+    } catch (error) {
+      console.error('Error creando imagen Konva:', error);
+      this.mostrarErrorImagen(imageGroup, elemento, 'Error al crear imagen');
+    }
+  };
+
+  imageObj.onerror = () => {
+    console.error('Error cargando imagen:', imageUrl);
+    this.mostrarErrorImagen(imageGroup, elemento, 'Error al cargar');
+  };
+
+  imageObj.crossOrigin = 'Anonymous';
+  imageObj.src = imageUrl;
+}
+private mostrarErrorImagen(imageGroup: Konva.Group, elemento: any, mensaje: string): void {
+  // Limpiar grupo
+  imageGroup.children?.forEach(child => child.destroy());
+
+  // Crear fondo de error
+  const errorBg = new Konva.Rect({
+    width: elemento.width,
+    height: elemento.height,
+    fill: '#ffebee',
+    stroke: '#f44336',
+    strokeWidth: 1,
+    cornerRadius: elemento.configuracion?.borderRadius || 0,
+    listening: false
+  });
+
+  const errorIcon = new Konva.Text({
+    x: elemento.width / 2,
+    y: elemento.height / 2 - 10,
+    text: '❌',
+    fontSize: 16,
+    fontFamily: 'Arial',
+    fill: '#d32f2f',
+    align: 'center',
+    offsetX: 8,
+    offsetY: 8,
+    listening: false
+  });
+
+  const errorText = new Konva.Text({
+    x: elemento.width / 2,
+    y: elemento.height / 2 + 10,
+    text: mensaje,
+    fontSize: 9,
+    fontFamily: 'Arial',
+    fill: '#d32f2f',
+    align: 'center',
+    offsetX: 25,
+    listening: false
+  });
+
+  imageGroup.add(errorBg);
+  imageGroup.add(errorIcon);
+  imageGroup.add(errorText);
+  imageGroup.getLayer()?.batchDraw();
+}
+
+
+private crearPlaceholderRect(elemento: any): Konva.Rect {
+  return new Konva.Rect({
+    width: elemento.width,
+    height: elemento.height,
+    fill: '#f8f9fa',
+    stroke: elemento.configuracion?.stroke || '#3498db',
+    strokeWidth: elemento.configuracion?.strokeWidth || 2,
+    cornerRadius: elemento.configuracion?.borderRadius || 0
+  });
+}
+
+private cargarImagenBackground(elemento: any, imageUrl: string, group: Konva.Group, placeholder: Konva.Shape): void {
+  const imageObj = new Image();
+  
+  imageObj.onload = () => {
+    try {
+      // Crear la imagen Konva según la forma
+      const konvaImage = this.crearImagenKonvaSegunForma(elemento, imageObj);
+      
+      // Aplicar objectFit si está configurado
+      this.aplicarObjectFit(konvaImage, imageObj, elemento.configuracion?.objectFit);
+
+      // Reemplazar placeholder con imagen
+      placeholder.destroy();
+      group.add(konvaImage);
+      
+      // Forzar redibujado
+      group.getLayer()?.batchDraw();
+
+    } catch (error) {
+      console.error('Error creando imagen Konva:', error);
+      this.mostrarEstadoImagen(group, elemento, '❌ Error', '#ffebee');
+    }
+  };
+
+  imageObj.onerror = () => {
+    console.error('Error cargando imagen:', imageUrl);
+    this.mostrarEstadoImagen(group, elemento, '❌ Error carga', '#ffebee');
+  };
+
+  imageObj.crossOrigin = 'Anonymous';
+  imageObj.src = imageUrl;
+}
+
+private crearImagenKonvaSegunForma(elemento: any, imageObj: HTMLImageElement): Konva.Shape {
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const width = elemento.width;
+  const height = elemento.height;
+  const stroke = elemento.configuracion?.stroke || '#000000';
+  const strokeWidth = elemento.configuracion?.strokeWidth || 6;
+
+  switch (forma) {
+    case 'circulo':
+      return new Konva.Circle({
+        x: width / 2,      // ✅ Centro dentro del grupo
+        y: height / 2,
+        radius: Math.min(width, height) / 2,
+        fillPatternImage: imageObj,
+        fillPatternOffset: { x: width / 2, y: height / 2 },
+        fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'estrella':
+      return new Konva.Star({
+        x: width / 2,
+        y: height / 2,
+        numPoints: 5,
+        innerRadius: Math.min(width, height) * 0.4,
+        outerRadius: Math.min(width, height) / 2,
+        fillPatternImage: imageObj,
+        fillPatternOffset: { x: width / 2, y: height / 2 },
+        fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'rombo':
+      return new Konva.Line({
+        points: [width/2, 0, width, height/2, width/2, height, 0, height/2],
+        closed: true,
+        fillPatternImage: imageObj,
+        fillPatternOffset: { x: 0, y: 0 },
+        fillPatternScale: this.calcularEscalaImagenCover(imageObj, width, height),
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+
+    case 'rectangulo':
+    default:
+      return new Konva.Image({
+        x: 0,
+        y: 0,
+        width: width,
+        height: height,
+        image: imageObj,
+        cornerRadius: elemento.configuracion?.borderRadius || 0
+      });
+  }
+}
+
+private calcularEscalaImagenCover(image: HTMLImageElement, targetWidth: number, targetHeight: number): { x: number; y: number } {
+  const scaleX = targetWidth / image.width;
+  const scaleY = targetHeight / image.height;
+  const scale = Math.max(scaleX, scaleY);
+  
+  return { x: scale, y: scale };
+}
+
+private calcularEscalaImagen(image: HTMLImageElement, targetWidth: number, targetHeight: number): { x: number; y: number } {
+  const scaleX = targetWidth / image.naturalWidth;
+  const scaleY = targetHeight / image.naturalHeight;
+  const scale = Math.max(scaleX, scaleY); // Cover mode
+  
+  return { x: scale, y: scale };
+}
+
+private mostrarEstadoImagen(group: Konva.Group, elemento: any, texto: string, colorFondo: string): void {
+  // Limpiar grupo excepto el background
+  const children = group.children?.slice() || [];
+  children.forEach(child => {
+    // Mantener solo el shape de fondo (no texto ni iconos)
+    if (!(child instanceof Konva.Circle) && 
+        !(child instanceof Konva.Rect) && 
+        !(child instanceof Konva.Star) && 
+        !(child instanceof Konva.Line)) {
+      child.destroy();
+    }
+  });
+
+  // Encontrar y actualizar el fondo
+  const background = group.children?.find(child => 
+    child instanceof Konva.Circle || 
+    child instanceof Konva.Rect || 
+    child instanceof Konva.Star || 
+    child instanceof Konva.Line
+  ) as Konva.Shape | undefined;
+
+  if (background && 'fill' in background) {
+    background.fill(colorFondo);
+  }
+
+  // Agregar texto de estado
+  const estadoText = new Konva.Text({
+    x: elemento.width / 2,
+    y: elemento.height / 2,
+    text: texto,
+    fontSize: 10,
+    fontFamily: 'Arial',
+    fill: '#d32f2f',
+    align: 'center',
+    offsetX: texto.length * 3,
+    offsetY: 5
+  });
+
+  group.add(estadoText);
+  group.getLayer()?.batchDraw();
+}
+
+
+
+private crearPlaceholderImagen(elemento: any): Konva.Group {
+  const group = new Konva.Group({
+    x: elemento.x,  // ← POSICIÓN RELATIVA A LA ZONA (del JSON)
+    y: elemento.y   // ← POSICIÓN RELATIVA A LA ZONA (del JSON)
+  });
+
+  const forma = elemento.configuracion?.forma || 'rectangulo';
+  const width = elemento.width;
+  const height = elemento.height;
+  const stroke = elemento.configuracion?.stroke || '#dee2e6';
+  const strokeWidth = elemento.configuracion?.strokeWidth || 1;
+
+  let background: Konva.Shape;
+
+  switch (forma) {
+    case 'circulo':
+      background = new Konva.Circle({
+        x: width / 2,      // Centro dentro del área del grupo
+        y: height / 2,
+        radius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+      break;
+
+    case 'estrella':
+      background = new Konva.Star({
+        x: width / 2,
+        y: height / 2,
+        numPoints: 5,
+        innerRadius: Math.min(width, height) * 0.4,
+        outerRadius: Math.min(width, height) / 2,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth
+      });
+      break;
+
+    case 'rombo':
+      background = new Konva.Line({
+        points: [width/2, 0, width, height/2, width/2, height, 0, height/2],
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        closed: true
+      });
+      break;
+
+    case 'rectangulo':
+    default:
+      background = new Konva.Rect({
+        x: 0,              // Esquina superior izquierda del área
+        y: 0,
+        width: width,
+        height: height,
+        fill: '#f8f9fa',
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        cornerRadius: elemento.configuracion?.borderRadius || 0
+      });
+      break;
+  }
+
+  // ✅ CORRECCIÓN: Icono centrado SIN offsetX/offsetY incorrectos
+  const icon = new Konva.Text({
+    x: width / 2,
+    y: height / 2 - 8,
+    text: '🖼️',
+    fontSize: 16,
+    fontFamily: 'Arial',
+    fill: '#6c757d',
+    align: 'center',
+    offsetX: 8,    // ✅ Solo para centrar el emoji (mitad del ancho aprox)
+    offsetY: 0     // ✅ Sin offset Y extra
+  });
+
+  const text = new Konva.Text({
+    x: width / 2,
+    y: height / 2 + 8,
+    text: 'Sin imagen',
+    fontSize: 9,
+    fontFamily: 'Arial',
+    fill: '#6c757d',
+    align: 'center',
+    width: width,         // ✅ IMPORTANTE: dar ancho para que center funcione
+    offsetX: width / 2,   // ✅ Centrar correctamente con el ancho
+    offsetY: 0
+  });
+
+  group.add(background);
+  group.add(icon);
+  group.add(text);
+
+  return group;
+}
+private aplicarObjectFit(konvaImage: Konva.Shape |Konva.Group, htmlImage: HTMLImageElement, objectFit: string = 'cover'): void {
+  if (!objectFit || objectFit === 'cover') {
+    const imgRatio = htmlImage.naturalWidth / htmlImage.naturalHeight;
+    
+    // Obtener dimensiones del contenedor según la forma
+    let containerWidth: number, containerHeight: number;
+    
+    if (konvaImage instanceof Konva.Group) {
+      // Para grupos, usar el primer hijo como referencia
+      const firstChild = konvaImage.children?.[0];
+      if (firstChild) {
+        containerWidth = firstChild.width();
+        containerHeight = firstChild.height();
+      } else {
+        return; // No se pueden obtener dimensiones
+      }
+    } else {
+      containerWidth = konvaImage.width();
+      containerHeight = konvaImage.height();
+    }
+    
+    const containerRatio = containerWidth / containerHeight;
+    
+    if (imgRatio > containerRatio) {
+      // Imagen más ancha - ajustar por altura
+      const newWidth = containerHeight * imgRatio;
+      if (konvaImage instanceof Konva.Group) {
+        konvaImage.children?.forEach(child => {
+          if ('width' in child) {
+            (child as any).width(newWidth);
+          }
+        });
+      } else {
+        konvaImage.width(newWidth);
+      }
+    } else {
+      // Imagen más alta - ajustar por ancho
+      const newHeight = containerWidth / imgRatio;
+      if (konvaImage instanceof Konva.Group) {
+        konvaImage.children?.forEach(child => {
+          if ('height' in child) {
+            (child as any).height(newHeight);
+          }
+        });
+      } else {
+        konvaImage.height(newHeight);
+      }
+    }
+  }
+}
 
 
 private crearFormaDesdePlantilla(elemento: any): Konva.Shape | null {
@@ -4578,21 +5493,25 @@ private crearFormaDesdePlantilla(elemento: any): Konva.Shape | null {
       return null;
   }
 }
-private crearElementoLink(elemento: any, texto: string, event: TimelineEvent): Konva.Text {
+private crearElementoLink(elemento: any, event: TimelineEvent): Konva.Text {
   const tieneEnlace = !!event.link;
+  const textoLink = tieneEnlace ? 
+    (elemento.configuracion?.textoLink || 'Ver más') : 
+    'Agregar enlace...';
+  
   const color = elemento.configuracion?.color || (tieneEnlace ? '#3498db' : '#95a5a6');
   
   const textElement = new Konva.Text({
     x: elemento.x,
     y: elemento.y,
-    text: texto,
+    text: textoLink,
     fontSize: elemento.configuracion?.fontSize || 11,
     fontFamily: elemento.configuracion?.fontFamily || 'Arial',
     fill: color,
     align: elemento.configuracion?.textAlign || 'left',
     width: elemento.width,
     height: elemento.height,
-    textDecoration: tieneEnlace ? 'underline' : 'none', // ← Subrayado solo si hay enlace
+    textDecoration: tieneEnlace ? 'underline' : 'none',
     rotation: elemento.configuracion?.rotation || 0,
     visible: elemento.visible !== false
   });
@@ -4606,7 +5525,7 @@ private crearElementoLink(elemento: any, texto: string, event: TimelineEvent): K
 
     textElement.on('mouseenter', () => {
       this.stage.container().style.cursor = 'pointer';
-      textElement.fill('#2980b9'); // Color más oscuro al hover
+      textElement.fill('#2980b9');
       this.mainLayer.batchDraw();
     });
 
@@ -4781,41 +5700,30 @@ private convertirLineaTiempoConfig(lineaConfig: any): void {
 
   console.log('🔄 Convirtiendo configuración de línea:', lineaConfig);
 
-  // ✅ MAPEO CORREGIDO: Convertir tipos del JSON a tipos del sistema
   const tipoMapeado = this.mapearTipoLinea(lineaConfig.tipo);
   
   if (!tipoMapeado) {
     console.error('❌ Tipo de línea no válido:', lineaConfig.tipo);
     return;
   }
-/*type TimelineLayoutType = 
-  | "horizontal"
-  | "vertical"
-  | "curve"
-  | "wave"
-  | "zigzag"
-  | "spiral"
-  | "s-curve"
-  | "custom";*/
 
-  // Crear un TimelineDesign temporal basado en la configuración
   const customDesign: TimelineDesign = {
     id: 'custom-from-json',
     name: `Diseño Importado - ${lineaConfig.tipo}`,
     description: 'Diseño cargado desde JSON importado',
     layout: {
-      type: tipoMapeado ,
+      type: tipoMapeado,
       orientation: this.calcularOrientacion(lineaConfig),
-      positionX: lineaConfig.positionX || this.stage.width() / 2,
-      positionY: lineaConfig.positionY || this.stage.height() / 2,
+      positionX: lineaConfig.positionX !== undefined ? lineaConfig.positionX : this.stage.width() / 2,
+      positionY: lineaConfig.positionY !== undefined ? lineaConfig.positionY : this.stage.height() / 2,
       intensity: lineaConfig.intensity || 20,
       intensitycurva: lineaConfig.intensitycurva || 100,
       anchoTotal: lineaConfig.anchoTotal || 1110,
       turns: lineaConfig.turns || 3,
-      amplitude: lineaConfig.intensity || 30, // Para wave
-      frequency: 0.02,
+      amplitude: lineaConfig.intensity || 30,
+      frequency: lineaConfig.frequency || 0.02,
       segments: 20,
-      curvature: 0.3 // Para curvas
+      curvature: 0.3
     },
     lineStyle: {
       stroke: lineaConfig.estilo?.stroke || '#070707ff',
@@ -4851,7 +5759,6 @@ private convertirLineaTiempoConfig(lineaConfig: any): void {
     ]
   };
 
-  // Aplicar el diseño personalizado
   this.currentTimelineDesign = customDesign;
   this.selectedTimelineDesignId = 'custom-from-json';
   
@@ -4860,7 +5767,9 @@ private convertirLineaTiempoConfig(lineaConfig: any): void {
     tipoMapeado: customDesign.layout.type,
     positionX: customDesign.layout.positionX,
     positionY: customDesign.layout.positionY,
-    intensity: customDesign.layout.intensity
+    intensity: customDesign.layout.intensity,
+    amplitude: customDesign.layout.amplitude,
+    frequency: customDesign.layout.frequency
   });
 }
 
@@ -5682,15 +6591,40 @@ compartirProyecto() {
     };
   }
 
-  addEventToTimeline(): void {
+addEventToTimeline(): void {
   if (!this.newEvent.year || !this.newEvent.title) {
     alert('Por favor, complete al menos el año y el título del evento.');
     return;
   }
 
-  // Si hay más eventos que zonas en la plantilla, duplicar el diseño
-  if (this.timelineEvents.length >= this.obtenerTotalZonasPlantilla()) {
+  const nuevoOrden = this.timelineEvents.length + 1;
+  
+  // ✅ ASIGNAR DISEÑO BASADO EN EL PATRÓN CÍCLICO
+  if (this.zonasPlantilla.length > 0) {
+    const diseñoBase = this.obtenerPatronDiseño(nuevoOrden);
+    if (diseñoBase) {
+      const nuevaX = this.calcularNuevaPosicionX(nuevoOrden);
+      
+      (this.newEvent as any)['zonaDesign'] = {
+        ...JSON.parse(JSON.stringify(diseñoBase)),
+        id: `zone-${nuevoOrden}`,
+        nombre: `Evento ${nuevoOrden}`,
+        orden: nuevoOrden,
+        posicion: {
+          ...diseñoBase.posicion,
+          x: nuevaX
+        }
+      };
+      
+      console.log(`🎨 Evento ${nuevoOrden}: Diseño ${(nuevoOrden - 1) % this.zonasPlantilla.length + 1} en X=${nuevaX}`);
+    }
+  } else {
+    // Fallback si no hay plantilla cargada
     this.duplicarDiseñoParaNuevoEvento();
+    if (this.nuevoEventoDesign) {
+      (this.newEvent as any)['zonaDesign'] = this.nuevoEventoDesign;
+      this.nuevoEventoDesign = null;
+    }
   }
 
   this.timelineEvents.push({...this.newEvent});
@@ -5698,45 +6632,227 @@ compartirProyecto() {
   this.calculateYearRange();
   this.renderTimelineEvents();
   this.closeEventModal();
+  
+  console.log(`✅ Evento agregado: ${this.newEvent.title} (${this.newEvent.year}) en posición X: ${(this.newEvent as any)['zonaDesign']?.posicion.x}`);
+}
+
+private limpiarPlantillaAnterior(): void {
+  this.zonasPlantilla = [];
+  this.timelineEvents = [];
+  this.limpiarCompletamenteLineaTiempo();
+  console.log('🧹 Plantilla anterior limpiada');
 }
 
 private obtenerTotalZonasPlantilla(): number {
-  // Esto debería venir de tu plantilla cargada
-  return 2; // Por ejemplo, para la plantilla de 2 eventos
+  // Buscar en la plantilla cargada cuántas zonas de eventos tiene
+  // Esto debería venir de tu plantilla actualmente cargada
+  const plantillaActual = this.plantillasDisponibles.find(p => 
+    p.nombre === this.proyectoNombre // o algún otro identificador
+  );
+  
+  if (plantillaActual && plantillaActual.configuracionVisual?.zonasEventos) {
+    return plantillaActual.configuracionVisual.zonasEventos.length;
+  }
+  
+  // Fallback: asumir 3 zonas por defecto (como en tu ejemplo)
+ return this.zonasPlantilla.length || 3; // Fallback a 3 si no hay zonas
 }
 
 
 private nuevoEventoDesign: any = null;
 
-private duplicarDiseñoParaNuevoEvento(): void {
-  // Obtener el diseño de la última zona para duplicarlo
-  const ultimoEvento = this.timelineEvents[this.timelineEvents.length - 1];
+/*private duplicarDiseñoParaNuevoEvento(): void {
+  const nuevoOrden = this.timelineEvents.length + 1;
   
-  if (ultimoEvento && (ultimoEvento as any)['zonaDesign']) {
-    const zonaDesign = (ultimoEvento as any)['zonaDesign'];
-    const nuevoOrden = this.timelineEvents.length + 1;
-    
-    // Crear nueva zona basada en la última
-    const nuevaZona = {
-      ...zonaDesign,
-      id: `zone-${nuevoOrden}`,
-      nombre: `Evento ${nuevoOrden}`,
-      orden: nuevoOrden,
-      posicion: {
-        ...zonaDesign.posicion, // ← CORREGIDO: separado correctamente
-        x: this.calcularNuevaPosicionX(nuevoOrden)
-      }
-    };
-    
-    // Asignar al nuevo evento (se asignará cuando se cree)
-    this.nuevoEventoDesign = nuevaZona;
+  // ✅ PRIMERO intentar usar zonas de plantilla
+  if (this.zonasPlantilla.length > 0) {
+    const ultimaZona = this.zonasPlantilla[this.zonasPlantilla.length - 1];
+    this.crearNuevaZonaDesdePlantilla(ultimaZona, nuevoOrden);
+  } 
+  // ✅ SEGUNDO intentar usar el último evento existente
+  else if (this.timelineEvents.length > 0) {
+    const ultimoEvento = this.timelineEvents[this.timelineEvents.length - 1];
+    if (ultimoEvento && (ultimoEvento as any)['zonaDesign']) {
+      const zonaDesign = (ultimoEvento as any)['zonaDesign'];
+      this.crearNuevaZonaDesdeExistente(zonaDesign, nuevoOrden);
+    } else {
+      this.crearDiseñoPorDefecto(nuevoOrden);
+    }
+  } 
+  // ✅ ÚLTIMO recurso: diseño por defecto
+  else {
+    this.crearDiseñoPorDefecto(nuevoOrden);
+  }
+}*/
+
+private duplicarDiseñoParaNuevoEvento(): void {
+  const nuevoOrden = this.timelineEvents.length + 1;
+  
+  // Obtener el patrón de diseño cíclico
+  const diseñoBase = this.obtenerPatronDiseño(nuevoOrden);
+  
+  if (diseñoBase) {
+    this.crearNuevaZonaDesdePlantillaConPosicion(diseñoBase, nuevoOrden);
+  } else {
+    this.crearDiseñoPorDefecto(nuevoOrden);
   }
 }
 
+private crearNuevaZonaDesdePlantillaConPosicion(diseñoBase: any, nuevoOrden: number): void {
+  const nuevaX = this.calcularNuevaPosicionX(nuevoOrden);
+  
+  const nuevaZona = {
+    ...JSON.parse(JSON.stringify(diseñoBase)), // Deep clone
+    id: `zone-${nuevoOrden}`,
+    nombre: `Evento ${nuevoOrden}`,
+    orden: nuevoOrden,
+    posicion: {
+      ...diseñoBase.posicion,
+      x: nuevaX,
+      // Mantener la misma Y
+      y: diseñoBase.posicion.y
+    }
+  };
+  
+  this.nuevoEventoDesign = nuevaZona;
+  console.log(`🔄 Creando evento ${nuevoOrden} con diseño ${(nuevoOrden - 1) % this.zonasPlantilla.length + 1} en X: ${nuevaX}`);
+}
+
+private crearNuevaZonaDesdePlantilla(zonaBase: any, nuevoOrden: number): void {
+  const nuevaZona = {
+    ...JSON.parse(JSON.stringify(zonaBase)), // Deep clone
+    id: `zone-${nuevoOrden}`,
+    nombre: `Evento ${nuevoOrden}`,
+    orden: nuevoOrden,
+    posicion: {
+      ...zonaBase.posicion,
+      x: this.calcularNuevaPosicionX(nuevoOrden)
+    }
+  };
+  
+  this.nuevoEventoDesign = nuevaZona;
+  console.log(`🔄 Duplicando zona de plantilla para evento ${nuevoOrden}`);
+}
+
+private crearNuevaZonaDesdeExistente(zonaDesign: any, nuevoOrden: number): void {
+  const nuevaZona = {
+    ...JSON.parse(JSON.stringify(zonaDesign)), // Deep clone
+    id: `zone-${nuevoOrden}`,
+    nombre: `Evento ${nuevoOrden}`,
+    orden: nuevoOrden,
+    posicion: {
+      ...zonaDesign.posicion,
+      x: this.calcularNuevaPosicionX(nuevoOrden)
+    }
+  };
+  
+  this.nuevoEventoDesign = nuevaZona;
+  console.log(`🔄 Duplicando diseño existente para evento ${nuevoOrden}`);
+}
+
+
+
+private crearDiseñoPorDefecto(nuevoOrden: number): void {
+  this.nuevoEventoDesign = {
+    id: `zone-${nuevoOrden}`,
+    nombre: `Evento ${nuevoOrden}`,
+    posicion: {
+      x: this.calcularNuevaPosicionX(nuevoOrden),
+      y: 298,
+      anchoMaximo: 195,
+      altoMaximo: 294
+    },
+    elementos: this.obtenerElementosBase(),
+    contenedor: {
+      visible: false
+    },
+    orden: nuevoOrden
+  };
+  console.log(`⚪ Usando diseño por defecto para evento ${nuevoOrden}`);
+}
+
+private obtenerElementosBase(): any[] {
+  // Retorna una copia de los elementos base de un evento
+  // Esto debería coincidir con la estructura de tu plantilla
+  return [
+    {
+      "id": `elem-${Date.now()}-contenedor`,
+      "tipo": "contenedor",
+      "visible": true,
+      "x": 24,
+      "y": 150,
+      "width": 141,
+      "height": 127,
+      "configuracion": {
+        "forma": "rectangulo",
+        "fill": "#ffffff",
+        "stroke": "#000000",
+        "strokeWidth": 2,
+        "cornerRadius": 4,
+        "rotation": 0
+      },
+      "restricciones": {
+        "movable": true,
+        "resizable": true,
+        "rotatable": true
+      }
+    },
+    // ... agregar los demás elementos (imagen, título, fecha, etc.)
+    // siguiendo la misma estructura de tu plantilla
+  ];
+}
+
 private calcularNuevaPosicionX(orden: number): number {
-  // Lógica para posicionar nuevos eventos a la derecha
-  const espacioEntreEventos = 100;
-  return 50 + ((orden - 1) * espacioEntreEventos);
+  // Si es uno de los primeros 3 eventos, usar posición original de la plantilla
+  if (orden <= this.zonasPlantilla.length && this.zonasPlantilla[orden - 1]) {
+    return this.zonasPlantilla[orden - 1].posicion.x;
+  }
+  
+  // Calcular la diferencia constante entre eventos
+  const diferenciaX = this.calcularDiferenciaX();
+  
+  // Para eventos adicionales, continuar el patrón desde el último evento
+  const ultimoEventoConDiseño = this.timelineEvents[this.timelineEvents.length - 1];
+  let ultimaPosicionX = 730; // Valor por defecto (evento 3)
+  
+  if (ultimoEventoConDiseño && (ultimoEventoConDiseño as any)['zonaDesign']) {
+    ultimaPosicionX = (ultimoEventoConDiseño as any)['zonaDesign'].posicion.x;
+  }
+  
+  // Calcular nueva posición sumando la diferencia
+  return ultimaPosicionX + diferenciaX;
+}
+
+private calcularDiferenciaX(): number {
+  // Calcular la diferencia promedio entre los eventos de la plantilla
+  if (this.zonasPlantilla.length >= 2) {
+    const diferencias: number[] = [];
+    
+    for (let i = 1; i < this.zonasPlantilla.length; i++) {
+      const diff = this.zonasPlantilla[i].posicion.x - this.zonasPlantilla[i - 1].posicion.x;
+      diferencias.push(diff);
+    }
+    
+    // Retornar el promedio de las diferencias
+    const promedio = diferencias.reduce((sum, diff) => sum + diff, 0) / diferencias.length;
+    return Math.round(promedio);
+  }
+  
+  // Fallback: usar diferencia de 300px (basado en tu ejemplo)
+  return 300;
+}
+
+private obtenerPatronDiseño(orden: number): any {
+  const totalZonas = this.zonasPlantilla.length;
+  
+  if (totalZonas === 0) {
+    return null;
+  }
+  
+  // Para eventos 1, 2, 3 usar diseños 1, 2, 3
+  // Para eventos 4, 5, 6 usar diseños 1, 2, 3 nuevamente (patrón cíclico)
+  const indiceDiseño = (orden - 1) % totalZonas;
+  return this.zonasPlantilla[indiceDiseño];
 }
 
   addHistoricalEvent(year: number, person: string): void {
@@ -6623,7 +7739,7 @@ private cargarProyectoDesdeJSON(proyecto: ProyectoExport): void {
 private limpiarEditorCompletamente(): void {
   this.mainLayer.destroyChildren();
   this.backgroundLayer.destroyChildren();
-  this.drawTimelineBase();
+  this.renderTimelineBase();
   this.updateBackgroundColor(this.backgroundColor);
 }
 

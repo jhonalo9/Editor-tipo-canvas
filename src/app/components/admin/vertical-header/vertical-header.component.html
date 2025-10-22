@@ -1,0 +1,65 @@
+<!-- vertical-header.component.html -->
+<nav class="vertical-header">
+  <!-- Header con logo y toggle -->
+  <div class="header-top">
+    <div class="logo-section">
+      <div class="logo">
+        <span class="logo-icon">📊</span>
+        <span class="logo-text">Timeline Admin</span>
+      </div>
+      <button class="menu-toggle" (click)="toggleMenu()">
+        <span class="toggle-icon">≡</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Información del usuario -->
+  <div class="user-info" *ngIf="getCurrentUser()">
+    <div class="user-avatar">
+      {{ getCurrentUser()?.nombre?.charAt(0) || 'U' }}
+    </div>
+    <div class="user-details">
+      <div class="user-name">{{ getCurrentUser()?.nombre }}</div>
+      <div class="user-role">{{ getCurrentUser()?.rol }}</div>
+    </div>
+  </div>
+
+  <!-- Menú principal -->
+  <div class="menu-section">
+    <div class="section-label">MENÚ PRINCIPAL</div>
+    <ul class="menu-list">
+      <li 
+        *ngFor="let item of menuItems" 
+        class="menu-item" 
+        [class.active]="item.isActive"
+        (click)="onMenuItemClick(item)"
+      >
+        <div class="menu-icon">
+          <span [class]="'icon-' + item.icon">
+            {{ getIcon(item.icon) }}
+          </span>
+        </div>
+        <span class="menu-label">{{ item.label }}</span>
+        <span class="menu-badge" *ngIf="item.badge">{{ item.badge }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Menú inferior -->
+  <div class="menu-section bottom-section">
+    <ul class="menu-list">
+      <li 
+        *ngFor="let item of bottomMenuItems" 
+        class="menu-item"
+        (click)="onMenuItemClick(item)"
+      >
+        <div class="menu-icon">
+          <span [class]="'icon-' + item.icon">
+            {{ getIcon(item.icon) }}
+          </span>
+        </div>
+        <span class="menu-label">{{ item.label }}</span>
+      </li>
+    </ul>
+  </div>
+</nav>

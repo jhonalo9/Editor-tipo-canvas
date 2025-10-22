@@ -57,7 +57,9 @@ export class AuthInterceptor implements HttpInterceptor {
     const publicUrls = [
       '/api/auth/login',
       '/api/auth/registro',
-      '/api/plantillas' // ✅ Plantillas públicas NO requieren auth
+      //'/api/plantillas' // ✅ Plantillas públicas NO requieren auth
+      '/api/plantillas/publicas',
+
     ];
 
     // ✅ URLs de admin que SÍ requieren auth

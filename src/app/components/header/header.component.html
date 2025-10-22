@@ -1,35 +1,86 @@
-<header class="header">
-  <div class="logo">
-    
-    <a routerLink="/"><img src='assets/images/logo_oficial.png' alt=""></a>
-    <!--TimelineApp-->
-  </div>
+<header class="navbar navbar-expand-lg modern-navbar">
+  <div class="container-fluid px-4">
+    <!-- Logo -->
+    <a class="navbar-brand d-flex align-items-center" routerLink="/">
+      <img src="assets/images/logo_oficial.png" alt="Logo" width="48" height="52" class="me-2 logo-glow" />
+      <span class="fw-bold fs-5 text-gradient">TimelineApp</span>
+    </a>
 
-  <nav class="nav">
-    <!-- Cuando el usuario NO está logueado -->
-     <div class="nav-links">
-     <a *ngIf="isLoggedIn" routerLink="/" class="nav-link">Inicio</a>
-     <a *ngIf="isLoggedIn" routerLink="/plan" class="nav-link">Plan</a>
-     <a *ngIf="isLoggedIn" routerLink="/plantillas" class="nav-link">Plantillas</a>
-     <a *ngIf="isLoggedIn" routerLink="/usuario/mis-proyectos" class="nav-link">Mis Proyectos</a>
-    </div>
-    <div *ngIf="!isLoggedIn" class="auth-buttons">
-      <button class="btn-secondary" routerLink="/login">Iniciar Sesión</button>
-      <button class="btn-register" routerLink="/register">Regístrate</button>
-    </div>
-
-    <!-- Cuando el usuario YA está logueado -->
-    <div *ngIf="isLoggedIn" class="user-menu">
-  <div class="dropdown" [class.open]="isMenuOpen">
-    <button class="btn-account" (click)="toggleMenu()">
-      <i class="fas fa-user-circle"></i> Mi Cuenta <i class="fas fa-caret-down"></i>
+    <!-- Botón toggle responsive -->
+    <button
+      class="navbar-toggler border-0 shadow-none"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarContent"
+      aria-controls="navbarContent"
+      aria-expanded="false"
+      aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
     </button>
-    <ul class="dropdown-menu" *ngIf="isMenuOpen">
-      <li><a routerLink="/usuario/mis-proyectos"><i class="fas fa-folder-open"></i> Mis Proyectos</a></li>
-      <li><a (click)="logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a></li>
-    </ul>
-  </div>
-</div>
 
-  </nav>
+    <!-- Contenido -->
+    <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
+      <!-- Enlaces -->
+      <ul class="navbar-nav align-items-center gap-2" *ngIf="isLoggedIn">
+        <li class="nav-item">
+          <a 
+  class="nav-link" 
+  routerLink="/" 
+  routerLinkActive="active" 
+  [routerLinkActiveOptions]="{ exact: true }"
+>
+  Inicio
+</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/plan" routerLinkActive="active">Plan</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/plantillas" routerLinkActive="active">Plantillas</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/usuario/mis-proyectos" routerLinkActive="active">Mis Proyectos</a>
+        </li>
+      </ul>
+
+      <!-- Botones de autenticación -->
+      <div *ngIf="!isLoggedIn" class="d-flex align-items-center gap-3 ms-3">        
+        <button class="btn btn-outline-light btn-login" routerLink="/login">Iniciar Sesión</button>
+        <button class="btn btn-purple btn-register" routerLink="/register">Regístrate</button>
+        
+      </div>
+
+      <!-- Menú de usuario -->
+      <div *ngIf="isLoggedIn" class="dropdown ms-3">
+        <button
+          class="btn btn-glass d-flex align-items-center gap-2"
+          type="button"
+          id="userMenu"
+          data-bs-toggle="dropdown"
+          aria-expanded="false">
+          <i class="fas fa-user-circle fs-5"></i> <span>Mi Cuenta</span>
+          <i class="fas fa-caret-down"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 glass-dropdown" aria-labelledby="userMenu">
+          <li>
+            <a class="dropdown-item" routerLink="/usuario/mis-proyectos">
+              <i class="fas fa-folder-open me-2 text-primary"></i> Mis Proyectos
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item" routerLink="/usuario/mis-favoritos">
+              <i class="bi bi-star-fill me-2"></i> Plantillas
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item text-danger" (click)="logout()">
+              <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </header>

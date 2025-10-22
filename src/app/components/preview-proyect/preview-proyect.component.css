@@ -72,3 +72,27 @@
   background: #00994d;
   transform: scale(1.05);
 }
+
+.error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 4px;
+  display: block;
+}
+.input.ng-invalid.ng-touched {
+  border-color: #e74c3c;
+}
+
+
+.plantilla-info {
+  background: #e3f2fd;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 3px solid #2196f3;
+}
+
+.plantilla-info small {
+  color: #1976d2;
+  font-size: 12px;
+}

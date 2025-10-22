@@ -33,28 +33,46 @@
     </div>
 
     <div class="templates-grid" *ngIf="!isLoading && plantillas.length > 0">
-      <div 
-        class="template-card" 
-        *ngFor="let plantilla of plantillas" 
-        (click)="usarPlantilla(plantilla)"
-        [style.border-left-color]="getPlantillaColor(plantilla)" 
+  <div 
+    class="template-card" 
+    *ngFor="let plantilla of plantillas"
+    [style.border-left-color]="getPlantillaColor(plantilla)"
+  >
+    <div class="template-preview">
+      <img 
+        [src]="getPlantillaImage(plantilla)" 
+        [alt]="plantilla.nombre"
+        (error)="onImageError($event, plantilla)"
+        class="template-image"
       >
-        <div class="template-preview">
-          <div class="template-placeholder" [style.background-color]="getPlantillaColor(plantilla) + '20'">
-            <i class="fas fa-project-diagram" [style.color]="getPlantillaColor(plantilla)"></i>
-          </div>
-        </div>
-        <div class="template-info">
-          <h3>{{ plantilla.nombre }}</h3>
-          <p>{{ plantilla.descripcion || 'Plantilla para línea de tiempo' }}</p>
-          
-          <div class="template-actions">
-            <button class="btn-outline">Usar Plantilla</button>
-          </div>
+
+      <!-- Overlay con botones -->
+      <div class="template-overlay">
+        <!--<h3>{{ plantilla.nombre }}</h3>-->
+        <div class="overlay-buttons">
+          <button class="btn-hover" (click)="usarPlantilla(plantilla)">Usar</button>
+          <button class="btn-view" (click)="abrirModal(plantilla, $event)">Visualizar</button>
         </div>
       </div>
+
+
+      <!-- ⭐ Ícono de Favorito -->
+    <div 
+  class="favorite-icon" 
+  (click)="toggleFavorito(plantilla, $event)"
+  title="Agregar a favoritos"
+>
+  <i [ngClass]="plantilla.favorito ? 'bi bi-star-fill' : 'bi bi-star'"></i>
+</div>
     </div>
+  </div>
+</div>
+<div class="explore">
+    <button class="btn-primary" routerLink="/plantillas">Explorar +</button>
+  </div>
   </section>
+
+  
 
   <!-- Features Section -->
   <section class="features-section">
@@ -79,4 +97,36 @@
       </div>
     </div>
   </section>
+</div>
+
+
+<!-- MODAL DE VISTA PREVIA -->
+<!-- MODAL DE VISTA PREVIA -->
+<div class="modal-backdrop" *ngIf="modalVisible" (click)="cerrarModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="cerrarModal()">&times;</button>
+
+    <img [src]="getPlantillaImage(plantillaSeleccionada)" [alt]="plantillaSeleccionada?.nombre" class="modal-image">
+
+    <div class="modal-info">
+      <h2>{{ plantillaSeleccionada?.nombre }}</h2>
+      <p>{{ plantillaSeleccionada?.descripcion || 'Sin descripción disponible' }}</p>
+
+      <div class="modal-actions">
+        <button class="btn-primary" (click)="usarPlantilla(plantillaSeleccionada)">
+          Usar Plantilla
+        </button>
+        
+        <!-- ✅ Botón de Favorito en el modal -->
+        <button 
+          class="btn-favorite-icon"
+          [class.favorito-activo]="plantillaSeleccionada?.favorito"
+          (click)="toggleFavoritoModal(plantillaSeleccionada, $event)"
+          [title]="plantillaSeleccionada?.favorito ? 'Quitar de Favoritos' : 'Agregar a Favoritos'"
+        >
+          <i [ngClass]="plantillaSeleccionada?.favorito ? 'bi bi-star-fill' : 'bi bi-star'"></i>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

@@ -3,35 +3,73 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ProyectoService } from '../../core/services/proyecto.service';
 import { HeaderComponent } from "../header/header.component";
+import { CommonModule } from '@angular/common';
 
 
 @Component({
   selector: 'app-preview-proyect',
-  imports: [FormsModule, HeaderComponent],
+  imports: [FormsModule, HeaderComponent,CommonModule],
   templateUrl: './preview-proyect.component.html',
   styleUrl: './preview-proyect.component.css'
 })
 export class PreviewProyectComponent {
-   titulo: string = '';
+    titulo: string = '';
   descripcion: string = '';
+
+  tituloError: string = '';
+  descripcionError: string = '';
+
+  plantillaNombre: string = '';
 
   constructor(
     private router: Router,
     private proyectoService: ProyectoService
   ) {}
 
+  ngOnInit(): void {
+    // ✅ Verificar si hay plantilla cargada
+    const proyectoTemporal = this.proyectoService.getProyectoTemporal();
+    
+    if (proyectoTemporal?.plantillaData) {
+      this.plantillaNombre = proyectoTemporal.plantillaData.nombre || 
+                            proyectoTemporal.plantillaData.titulo || 
+                            'Plantilla seleccionada';
+      console.log('📋 Plantilla detectada:', this.plantillaNombre);
+    } else {
+      console.log('⚠️ No hay plantilla seleccionada');
+    }
+  }
+
+  
   empezar(): void {
-    if (this.titulo) {
-      // Guardar los metadatos temporalmente en el servicio
-      this.proyectoService.setProyectoTemporal({
-        titulo: this.titulo,
-        descripcion: this.descripcion
-      });
-      
-      
+    // Validaciones
+    this.tituloError = '';
+    this.descripcionError = '';
+
+    if (!this.titulo.trim()) {
+      this.tituloError = 'El título es obligatorio';
+      return;
     }
 
-    this.router.navigate(['editor']);
+    if (this.titulo.length < 3) {
+      this.tituloError = 'El título debe tener al menos 3 caracteres';
+      return;
+    }
+
+    // ✅ Actualizar solo metadatos (mantiene plantilla)
+    this.proyectoService.actualizarMetadatos(this.titulo, this.descripcion);
+
+    // ✅ DEBUG: Verificar datos antes de navegar
+    const datosFinales = this.proyectoService.getProyectoTemporal();
+    console.log('📊 Datos completos antes de navegar al editor:', {
+      titulo: datosFinales?.titulo,
+      descripcion: datosFinales?.descripcion,
+      tienePlantilla: !!datosFinales?.plantillaData,
+      nombrePlantilla: datosFinales?.plantillaData?.nombre
+    });
+
+    // Redirigir al editor
+    this.router.navigate(['/editor']);
   }
 
 }

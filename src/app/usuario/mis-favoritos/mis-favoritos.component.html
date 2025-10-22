@@ -1,0 +1,132 @@
+<app-header></app-header>
+<div class="favoritos-container">
+      <div class="favoritos-header">
+        <h2>Mis Plantillas Favoritas</h2>
+        <div class="favoritos-stats" *ngIf="totalFavoritos > 0">
+          <span class="badge">{{ totalFavoritos }} plantilla{{ totalFavoritos !== 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="cargando" class="loading-state">
+        <div class="spinner"></div>
+        <p>Cargando tus favoritos...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!cargando && plantillasFavoritas.length === 0" class="empty-state">
+        <div class="empty-icon">★</div>
+        <h3>No tienes plantillas favoritas</h3>
+        <p>Cuando marques plantillas como favoritas, aparecerán aquí.</p>
+        <a routerLink="/plantillas" class="btn-primary">Explorar Plantillas</a>
+      </div>
+
+      <!-- Favoritos Grid -->
+      <div *ngIf="!cargando && plantillasFavoritas.length > 0" class="plantillas-grid">
+        <div 
+          *ngFor="let plantilla of plantillasFavoritas" 
+          class="plantilla-card"
+          [class.favorita]="plantilla.favorito"
+          (click)="abrirModal(plantilla, $event)"
+        >
+          <!-- Portada de la plantilla -->
+          <div class="plantilla-portada">
+            <img 
+              [src]="getPlantillaImage(plantilla)" 
+              [alt]="plantilla.nombre"
+              (error)="onImageError($event, plantilla)"
+              class="portada-img"
+            />
+            <div class="plantilla-overlay">
+              <button 
+                class="btn-favorito"
+                (click)="toggleFavorito(plantilla, $event)"
+                [class.favorita]="plantilla.favorito"
+                [disabled]="eliminandoFavoritos.has(plantilla.id)"
+                title="Quitar de favoritos"
+              >
+                <span *ngIf="eliminandoFavoritos.has(plantilla.id)" class="spinner-small"></span>
+                {{ eliminandoFavoritos.has(plantilla.id) ? '' : '★' }}
+              </button>
+              <button class="btn-usar" (click)="usarPlantilla(plantilla); $event.stopPropagation()">
+                Usar Plantilla
+              </button>
+            </div>
+          </div>
+
+          <!-- Información de la plantilla -->
+          <div class="plantilla-info">
+            <h4 class="plantilla-title">{{ plantilla.nombre }}</h4>
+            <p class="plantilla-descripcion" *ngIf="plantilla.descripcion">
+              {{ plantilla.descripcion }}
+            </p>
+            <div class="plantilla-meta">
+              <span class="categoria" *ngIf="getPlantillaCategoria(plantilla)">
+                {{ getPlantillaCategoria(plantilla) }}
+              </span>
+              <span class="fecha-favorito" *ngIf="plantilla.fechaAgregadoFavorito">
+                ★ {{ formatFecha(plantilla.fechaAgregadoFavorito) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="error" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h3>Error al cargar favoritos</h3>
+        <p>{{ error }}</p>
+        <button (click)="cargarFavoritos()" class="btn-retry">Reintentar</button>
+      </div>
+
+      <!-- Modal de Vista Previa -->
+      <div *ngIf="modalVisible" class="modal-overlay" (click)="cerrarModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <button class="modal-close" (click)="cerrarModal()">×</button>
+          
+          <div *ngIf="plantillaSeleccionada" class="modal-plantilla">
+            <div class="modal-portada">
+              <img 
+                [src]="getPlantillaImage(plantillaSeleccionada)" 
+                [alt]="plantillaSeleccionada.nombre"
+                class="modal-img"
+              />
+            </div>
+            
+            <div class="modal-info">
+              <h3>{{ plantillaSeleccionada.nombre }}</h3>
+              <p class="modal-descripcion" *ngIf="plantillaSeleccionada.descripcion">
+                {{ plantillaSeleccionada.descripcion }}
+              </p>
+              
+              <div class="modal-meta">
+                <div class="meta-item">
+                  <strong>Categoría:</strong>
+                  <span>{{ getPlantillaCategoria(plantillaSeleccionada) || 'Sin categoría' }}</span>
+                </div>
+                <div class="meta-item" *ngIf="plantillaSeleccionada.fechaAgregadoFavorito">
+                  <strong>Agregado:</strong>
+                  <span>{{ formatFecha(plantillaSeleccionada.fechaAgregadoFavorito) }}</span>
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button 
+                  class="btn-favorito-modal"
+                  (click)="toggleFavoritoModal(plantillaSeleccionada, $event)"
+                  [class.favorita]="plantillaSeleccionada.favorito"
+                  [disabled]="eliminandoFavoritos.has(plantillaSeleccionada.id)"
+                >
+                  <span *ngIf="eliminandoFavoritos.has(plantillaSeleccionada.id)" class="spinner-small"></span>
+                  {{ eliminandoFavoritos.has(plantillaSeleccionada.id) ? 'Quitando...' : '★ Quitar de Favoritos' }}
+                </button>
+                <button class="btn-usar-modal" (click)="usarPlantilla(plantillaSeleccionada)">
+                  Usar esta Plantilla
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

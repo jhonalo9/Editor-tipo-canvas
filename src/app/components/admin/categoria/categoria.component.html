@@ -1,0 +1,147 @@
+<div class="layout-container">
+  <!-- Vertical Header -->
+  <app-vertical-header></app-vertical-header>
+  
+  <!-- Contenido Principal -->
+  <main class="main-content">
+    <div class="content-container">
+      
+      <!-- Header y Botones -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="page-title">Gestión de Categorías</h2>
+        <button *ngIf="!mostrarFormulario" class="btn btn-primary" (click)="nuevoCategoria()">
+          <i class="fas fa-plus"></i> Nueva Categoría
+        </button>
+        <button *ngIf="mostrarFormulario" class="btn btn-secondary" (click)="cancelarEdicion()">
+          <i class="fas fa-arrow-left"></i> Volver a la lista
+        </button>
+      </div>
+
+      <!-- Mensajes -->
+      <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show">
+        {{ errorMessage }}
+        <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+      </div>
+
+      <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show">
+        {{ successMessage }}
+        <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+      </div>
+
+      <!-- FORMULARIO -->
+      <div *ngIf="mostrarFormulario" class="card form-card">
+        <div class="card-header">
+          <h5 class="card-title">{{ modoEdicion ? 'Editar Categoría' : 'Nueva Categoría' }}</h5>
+        </div>
+        <div class="card-body">
+          <form (ngSubmit)="guardarCategoria()">
+            <div class="mb-3">
+              <label for="nombre" class="form-label">Nombre *</label>
+              <input type="text" class="form-control" id="nombre" 
+                     [(ngModel)]="categoria.nombre" name="nombre" 
+                     required placeholder="Ingrese el nombre de la categoría">
+            </div>
+
+            <div class="mb-3">
+              <label for="descripcion" class="form-label">Descripción</label>
+              <textarea class="form-control" id="descripcion" 
+                        [(ngModel)]="categoria.descripcion" name="descripcion" 
+                        rows="3" placeholder="Ingrese una descripción (opcional)">
+              </textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i> 
+                {{ modoEdicion ? 'Actualizar' : 'Guardar' }}
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="cancelarEdicion()">
+                <i class="fas fa-times"></i> Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- LISTA (solo se muestra cuando no está visible el formulario) -->
+      <div *ngIf="!mostrarFormulario">
+        <!-- Barra de búsqueda -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <input type="text" class="form-control" 
+                     [(ngModel)]="terminoBusqueda" 
+                     placeholder="Buscar categorías..." 
+                     (keyup.enter)="buscarCategorias()">
+              <button class="btn btn-outline-secondary" type="button" (click)="buscarCategorias()">
+                <i class="fas fa-search"></i>
+              </button>
+              <button *ngIf="buscando" class="btn btn-outline-danger" type="button" (click)="limpiarBusqueda()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div class="col-md-6 text-end">
+            <span class="text-muted">
+              Mostrando {{ categoriasFiltradas.length }} de {{ categorias.length }} categorías
+            </span>
+          </div>
+        </div>
+
+        <!-- Tabla de categorías -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title">Lista de Categorías</h5>
+          </div>
+          <div class="card-body">
+            <div *ngIf="categoriasFiltradas.length === 0" class="text-center py-4">
+              <p class="text-muted">
+                {{ buscando ? 'No se encontraron categorías con ese criterio' : 'No hay categorías registradas' }}
+              </p>
+            </div>
+
+            <table *ngIf="categoriasFiltradas.length > 0" class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Descripción</th>
+                  <th>Estado</th>
+                  <th width="150">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let categoria of categoriasFiltradas">
+                  <td>{{ categoria.idCategoria }}</td>
+                  <td>
+                    <strong>{{ categoria.nombre }}</strong>
+                  </td>
+                  <td>{{ categoria.descripcion || 'Sin descripción' }}</td>
+                  <td>
+                    <span [class]="categoria.estado === 'ACTIVA' ? 'badge bg-success' : 'badge bg-secondary'">
+                      {{ categoria.estado }}
+                    </span>
+                  </td>
+                  <td>
+  <div class="btn-group btn-group-sm">
+    <button class="btn btn-outline-warning" 
+            (click)="editarCategoria(categoria)"
+            title="Editar">
+      <i class="fas fa-edit"></i>
+    </button>
+    <button class="btn btn-outline-danger" 
+            (click)="verificarCategoria(categoria); eliminarCategoria(categoria.idCategoria)"
+            title="Eliminar">
+      <i class="fas fa-trash"></i>
+    </button>
+  </div>
+</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

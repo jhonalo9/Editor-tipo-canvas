@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { EditorofiadminComponent } from './editorofiadmin.component';
+import { FullPlantillasComponent } from './full-plantillas.component';
 
-describe('EditorofiadminComponent', () => {
-  let component: EditorofiadminComponent;
-  let fixture: ComponentFixture<EditorofiadminComponent>;
+describe('FullPlantillasComponent', () => {
+  let component: FullPlantillasComponent;
+  let fixture: ComponentFixture<FullPlantillasComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EditorofiadminComponent]
+      imports: [FullPlantillasComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(EditorofiadminComponent);
+    fixture = TestBed.createComponent(FullPlantillasComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

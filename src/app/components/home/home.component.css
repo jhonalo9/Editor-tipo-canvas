@@ -40,18 +40,22 @@
 .btn-primary {
   background: #000000;
   border: none;
-  padding: 12px 25px;
-  box-shadow:0 0 20px #08d426;
-  border-radius: 26px;
+  padding: 5px 25px;
+  border-radius: 16px;
   color: white;
-  border: solid 1px #08d426;
+
   font-size: 1.7rem;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .btn-primary:hover {
-  background: #0097a7;
+  
+  background: #01d020;
+ 
+  box-shadow: 0 0 10px #000;
+
+
 }
 
 .btn-secondary {
@@ -97,7 +101,7 @@
 
 /* Templates Section */
 .templates-section {
-  padding: 60px 10%;
+  padding: 60px 5%;
   text-align: center;
   background-color: #f9f9f9;
   border:solid 1px #0000002e;
@@ -110,22 +114,25 @@
 
 .templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 25px;
+   grid-template-columns: repeat(3, 1fr); 
+  gap: 30px;
   margin-top: 40px;
+  padding: 0 5px;
 }
 
 .template-card {
-  background: white;
+  position: relative;
   border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  cursor: pointer;
-  transition: transform 0.2s;
+  overflow: hidden;
+  background: #fff;
+  
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .template-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
 }
 
 .template-info h3 {
@@ -195,4 +202,354 @@
 
 .btn-register:hover {
   background: #5548d6;
+}
+
+
+.template-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.template-card:hover .template-image {
+  transform: scale(1.05);
+}
+
+
+.template-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Mantener compatibilidad con el placeholder anterior */
+.template-placeholder {
+  display: none; /* Ocultar el placeholder ahora que usamos imágenes reales */
+}
+
+
+
+.template-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+
+.template-overlay {
+  position: absolute;
+  top: 70px;
+  left: 120px;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 10, 0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.template-card:hover .template-overlay {
+  opacity: 1;
+}
+
+.template-overlay h3 {
+  color: #f2ff00;
+  font-size: 1.1rem;
+  margin-bottom: 100px;
+  padding: 2px;
+  margin-left:-600px;
+  background: #000;
+  cursor:default;
+}
+
+.overlay-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+
+/* Botón dentro del hover */
+.btn-hover {
+  background: #000;
+  color: #ffffff;
+  padding: 8px 18px;
+  border-radius: 25px;
+  
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+
+
+/* Adaptable a móviles */
+@media (max-width: 600px) {
+  .template-image {
+    height: 180px;
+  }
+
+  .template-overlay h3 {
+    font-size: 1rem;
+  }
+
+  .btn-hover {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+  }
+}
+
+
+
+
+
+
+
+
+/* Botones dentro del overlay */
+.btn-hover, .btn-view {
+ 
+  background: #000;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-hover:hover, .btn-view:hover {
+  background: #08d426;
+  color: #000;
+}
+
+/* === MODAL === */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 15, 15, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 20px;
+  max-width: 700px;
+  width: 90%;
+  overflow: hidden;
+  animation: slideUp 0.4s ease;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  font-size: 2rem;
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+}
+
+.modal-image {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-info {
+  padding: 20px 30px 30px;
+  text-align: center;
+}
+
+.modal-info h2 {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+.modal-info p {
+  color: #555;
+  margin-bottom: 20px;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+
+
+
+.favorite-icon {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  font-size: 1.8rem;
+  color: #bbb;
+  cursor: pointer;
+  z-index: 20;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all 0.3s ease;
+}
+
+/* Aparece al pasar el mouse */
+.template-card:hover .favorite-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Hover visual */
+.favorite-icon:hover {
+  color: #fadb14;
+  transform: scale(1.15);
+}
+
+/* Cuando está en favoritos (estrella amarilla brillante) */
+.favorite-icon .bi-star-fill {
+  color: #fadb14;
+  text-shadow: 0 0 8px #fadb14a8;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Botón de favorito solo ícono en modal */
+.btn-favorite-icon {
+  background: #ffffff;
+  border: 2px solid #454444;
+  border-radius: 8px;
+  width: 55px;
+  height: 50px;
+  margin: 7px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.btn-favorite-icon:hover {
+  background: #fff;
+  border-color: #ffc107;
+  transform: translateY(-1px);
+}
+
+.btn-favorite-icon.favorito-activo {
+  background: #fff3cd;
+  border-color: #ffc107;
+}
+
+.btn-favorite-icon i {
+  font-size: 1.3rem;
+  color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+.btn-favorite-icon:hover i {
+  color: #ffc107;
+}
+
+.btn-favorite-icon.favorito-activo i {
+  color: #ffc107;
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+/* Efecto de pulso al hacer toggle */
+@keyframes pulse-gold {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.btn-favorite-icon:active {
+  animation: pulse-gold 0.3s ease;
+}
+
+/* Responsive para modal actions */
+@media (max-width: 768px) {
+  .modal-actions {
+    flex-direction: row; /* Mantener en fila en móviles también */
+    justify-content: space-between;
+  }
+  
+  .btn-primary {
+    flex: 1;
+    margin-right: 10px;
+  }
+  
+  .btn-favorite-icon {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Estilos existentes para el ícono de favorito en tarjetas (mantener) */
+.favorite-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.favorite-icon:hover {
+  background: white;
+  transform: scale(1.1);
+}
+
+.favorite-icon i {
+  font-size: 1.2rem;
+  color: #ffc107;
+  transition: all 0.3s ease;
+}
+
+.favorito-activo i {
+  color: #ffc107;
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+.explore{
+  display: flex;
+  justify-content: center;
+  margin: 50PX;
 }

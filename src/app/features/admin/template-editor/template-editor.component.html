@@ -24,9 +24,9 @@
         <i class="fas fa-eye"></i> {{ previewMode ? 'Editar' : 'Vista Previa' }}
       </button>
 
-      <button class="btn btn-info" (click)="exportTemplateAsJSON()">
+      <!--<button class="btn btn-info" (click)="exportTemplateAsJSON()">
         <i class="fas fa-download"></i> Exportar JSON
-      </button>
+      </button>-->
 
       <label class="btn btn-info" style="cursor: pointer; margin: 0;">
         <i class="fas fa-upload"></i> Importar JSON
@@ -380,13 +380,11 @@
         </div>
         
         <div class="form-group">
-          <label>Categoría:</label>
-          <select [(ngModel)]="templateCategory" class="form-select">
-            <option value="educativa">📚 Educativa</option>
-            <option value="corporativa">💼 Corporativa</option>
-            <option value="historica">🏛️ Histórica</option>
-            <option value="personal">👤 Personal</option>
-            <option value="otra">📌 Otra</option>
+          <label for="categoria">Categoría:</label>
+          <select  id="categoria" [(ngModel)]="selectedCategoria" (change)="onCategoriaChange(selectedCategoria)" class="form-select">
+             <option *ngFor="let cat of categorias" [ngValue]="cat">
+      {{ cat.nombre }}
+    </option>
           </select>
         </div>
         
@@ -815,4 +813,20 @@
     
   </div>
   
+</div>
+
+
+<!-- En la barra de herramientas o panel de configuración -->
+<div class="portada-controls">
+  <button type="button" 
+          class="btn btn-outline-info" 
+          (click)="abrirModalPortada()"
+          title="Gestionar portada de la plantilla">
+    <i class="fas fa-image"></i> Portada
+  </button>
+  
+  <!-- Indicador de portada existente -->
+  <span *ngIf="proyectoPortada" class="portada-indicator">
+    <i class="fas fa-check-circle text-success"></i>
+  </span>
 </div>
