@@ -84,18 +84,10 @@ export class FullPlantillasComponent implements OnInit, OnDestroy {
   }
 
   procesarPlantillas(plantillas: any[]): any[] {
-    console.log('🔄 Procesando plantillas:', plantillas);
     
     return plantillas.map((plantilla, index) => {
-      console.log(`\n📋 ============ PLANTILLA ${index + 1}: ${plantilla.nombre} ============`);
-      console.log('📦 Plantilla completa:', plantilla);
-      console.log('🏷️ plantilla.categoria:', plantilla.categoria);
-      console.log('🔍 tipo de categoria:', typeof plantilla.categoria);
       
       if (plantilla.categoria && typeof plantilla.categoria === 'object') {
-        console.log('   → categoria.idCategoria:', plantilla.categoria.idCategoria);
-        console.log('   → categoria.nombre:', plantilla.categoria.nombre);
-        console.log('   → categoria.descripcion:', plantilla.categoria.descripcion);
       }
       
       const data = this.plantillaService.parsePlantillaData(plantilla);
@@ -103,9 +95,6 @@ export class FullPlantillasComponent implements OnInit, OnDestroy {
       
       // Extraer categoría durante el procesamiento
       const categoria = this.extraerCategoria(plantilla, data);
-      
-      console.log(`✅ Categoría extraída final: "${categoria}"`);
-      console.log('📋 ========================================\n');
 
       return {
         ...plantilla,
@@ -120,39 +109,30 @@ export class FullPlantillasComponent implements OnInit, OnDestroy {
   extraerCategoria(plantilla: any, data: any): string {
     if (!plantilla && !data) return 'Sin categoría';
 
-    console.log('🔍 Extrayendo categoría - Plantilla:', plantilla);
-
     // ✅ PRIORIDAD 1: Buscar en categoriaNombre (formato del backend)
     if (plantilla.categoriaNombre && typeof plantilla.categoriaNombre === 'string') {
-      console.log('✅ Categoría encontrada en plantilla.categoriaNombre:', plantilla.categoriaNombre);
       return plantilla.categoriaNombre.trim().charAt(0).toUpperCase() + plantilla.categoriaNombre.trim().slice(1).toLowerCase();
     }
 
     // ✅ PRIORIDAD 2: Buscar en el objeto plantilla.categoria (objeto Categoria completo)
     if (plantilla.categoria && typeof plantilla.categoria === 'object' && plantilla.categoria.nombre) {
-      console.log('✅ Categoría encontrada en plantilla.categoria.nombre:', plantilla.categoria.nombre);
       return plantilla.categoria.nombre.trim().charAt(0).toUpperCase() + plantilla.categoria.nombre.trim().slice(1).toLowerCase();
     }
 
     // Si la categoría viene como string directo (fallback)
     if (plantilla.categoria && typeof plantilla.categoria === 'string') {
-      console.log('✅ Categoría encontrada en plantilla.categoria (string):', plantilla.categoria);
       return plantilla.categoria.trim().charAt(0).toUpperCase() + plantilla.categoria.trim().slice(1).toLowerCase();
     }
 
     // Buscar en categoriaId como último recurso (solo tenemos el ID)
     if (plantilla.categoriaId) {
-      console.log('⚠️ Solo se encontró categoriaId:', plantilla.categoriaId);
+      console.log('Solo se encontró categoriaId:', plantilla.categoriaId);
       console.log('   Considera pedir al backend que incluya categoriaNombre');
     }
-
-    console.log('❌ No se encontró categoría válida');
     return 'Sin categoría';
   }
 
-  extraerCategorias(): void {
-    console.log('🔄 Iniciando extracción de categorías...');
-    
+  extraerCategorias(): void {    
     const categoriasSet = new Set<string>();
     let categoriasEncontradas = 0;
 
@@ -165,16 +145,9 @@ export class FullPlantillasComponent implements OnInit, OnDestroy {
         categoriasEncontradas++;
       }
       
-      console.log(`📊 Plantilla ${index + 1}: "${plantilla.nombre}" → Categoría: "${categoria}"`);
     });
 
     this.categorias = Array.from(categoriasSet).sort();
-    
-    console.log('✅ Resumen de categorías:');
-    console.log('- Total de plantillas:', this.todasLasPlantillas.length);
-    console.log('- Plantillas con categoría:', categoriasEncontradas);
-    console.log('- Categorías únicas encontradas:', this.categorias.length);
-    console.log('- Lista de categorías:', this.categorias);
   }
 
   cargarEstadosFavoritos(): void {
@@ -355,22 +328,9 @@ export class FullPlantillasComponent implements OnInit, OnDestroy {
     this.plantillaSeleccionada = null;
   }
 
-  // Navegación
-  /*usarPlantilla(plantilla: any): void {
-    if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/usuario/descripcion-proyect'], { 
-        state: { plantilla: plantilla } 
-      });
-    } else {
-      this.router.navigate(['/login']);
-    }
-  }*/
-
-
-
+  
 
   usarPlantilla(plantilla: any): void {
-  console.log('✅ Plantilla seleccionada:', plantilla);
   
   const plantillaProcesada = {
     ...plantilla,

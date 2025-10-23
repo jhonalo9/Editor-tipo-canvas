@@ -54,7 +54,7 @@ export class LoginComponent implements OnInit {
         if (res.usuario.rol === 'ADMIN') { // ← Cambiado de 'admin' a 'ADMIN' (mayúsculas)
           this.router.navigate(['/admin/home']);
         } else {
-          this.router.navigate(['/usuario/descripcion-proyect']);
+          this.router.navigate(['/plantillas']);
         }
       },
       error: (err) => {

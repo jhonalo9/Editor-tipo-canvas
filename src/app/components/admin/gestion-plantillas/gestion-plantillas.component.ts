@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
 import { TemplateListItem , Categoria} from './template-list.interface';
 import { AdminTemplateService } from '../../../features/admin/template-editor/admin-template.service';
@@ -34,7 +34,8 @@ export class GestionPlantillasComponent implements OnInit {
   constructor(
     private templateListService: AdminTemplateService,
     private authService: AuthService,
-    private archivoService: ArchivoService 
+    private archivoService: ArchivoService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -54,33 +55,94 @@ export class GestionPlantillasComponent implements OnInit {
   /**
    * Cargar mis plantillas
    */
+  vecesUsadaMap: Map<number, number> = new Map();
  async cargarMisPlantillas(): Promise<void> {
-  try {
-    this.cargando = true;
-    const plantillasRaw = await lastValueFrom(
-      this.templateListService.getMisPlantillas()
-    );
-    
-    // 🔧 MAPEAR estructura del backend al formato esperado
-    this.misPlantillas = plantillasRaw.map(plantilla => this.normalizarPlantilla(plantilla));
-    
-    console.log('✅ Mis plantillas cargadas:', this.misPlantillas.length);
-    
-    // Debug: Ver datos de cada plantilla
-    this.misPlantillas.forEach((p, i) => {
-      console.log(`Plantilla ${i}:`, {
-        nombre: p.nombre,
-        categoria: p.categoria,
-        metadatos: p.metadatos
-      });
-    });
-  } catch (error) {
-    console.error('❌ Error cargando mis plantillas:', error);
-    this.mostrarError('Error al cargar tus plantillas');
-  } finally {
-    this.cargando = false;
+    try {
+      this.cargando = true;
+      
+      // 🆕 CARGAR PRIMERO LAS VECES USADA
+      await this.cargarVecesUsadaPlantillas();
+      
+      // Luego cargar las plantillas
+      const plantillasRaw = await lastValueFrom(
+        this.templateListService.getMisPlantillas()
+      );
+      
+      // 🔧 MAPEAR estructura del backend al formato esperado
+      this.misPlantillas = plantillasRaw.map(plantilla => this.normalizarPlantilla(plantilla));
+      
+    } catch (error) {
+      console.error('❌ Error cargando mis plantillas:', error);
+      this.mostrarError('Error al cargar tus plantillas');
+    } finally {
+      this.cargando = false;
+    }
   }
-}
+
+    private async cargarVecesUsadaPlantillas(): Promise<void> {
+    try {
+      const plantillasMasUsadas = await lastValueFrom(
+        this.templateListService.getVecesUsadaPlantillas()
+      );
+      
+     
+      
+      // Limpiar el mapa antes de cargar nuevos datos
+      this.vecesUsadaMap.clear();
+      
+      // Llenar el mapa con los datos de uso
+      plantillasMasUsadas.forEach(plantilla => {
+        this.vecesUsadaMap.set(plantilla.id, plantilla.conteo || 0);
+       
+      });
+      
+      
+    } catch (error) {
+      console.error('Error cargando veces usada:', error);
+      // No mostrar error al usuario para no interrumpir la experiencia
+    }
+  }
+
+  private actualizarVecesUsadaEnPlantillas(): void {
+    // Actualizar misPlantillas
+    this.misPlantillas.forEach(plantilla => {
+      const vecesUsada = this.vecesUsadaMap.get(plantilla.id) || 0;
+      if (plantilla.metadatos) {
+        plantilla.metadatos.vecesUsada = vecesUsada;
+      }
+    });
+
+    // Actualizar plantillasPublicas si están cargadas
+    this.plantillasPublicas.forEach(plantilla => {
+      const vecesUsada = this.vecesUsadaMap.get(plantilla.id) || 0;
+      if (plantilla.metadatos) {
+        plantilla.metadatos.vecesUsada = vecesUsada;
+      }
+    });
+
+    // Actualizar todasPlantillas si están cargadas
+    this.todasPlantillas.forEach(plantilla => {
+      const vecesUsada = this.vecesUsadaMap.get(plantilla.id) || 0;
+      if (plantilla.metadatos) {
+        plantilla.metadatos.vecesUsada = vecesUsada;
+      }
+    });
+  }
+
+  getVecesUsada(plantilla: TemplateListItem): number {
+    // Primero buscar en el mapa
+    if (this.vecesUsadaMap.has(plantilla.id)) {
+      return this.vecesUsadaMap.get(plantilla.id)!;
+    }
+    
+    // Luego buscar en los metadatos
+    if (plantilla.metadatos?.vecesUsada !== undefined) {
+      return plantilla.metadatos.vecesUsada;
+    }
+    
+    // Por último, valor por defecto
+    return 0;
+  }
 
 
 
@@ -251,12 +313,17 @@ private parsearConfiguracionVisual(data: any): any {
    * Editar plantilla
    */
   editarPlantilla(plantilla: TemplateListItem): void {
-    console.log('✏️ Editando plantilla:', plantilla);
-    // Navegar al editor con el ID de la plantilla
-    // this.router.navigate(['/admin/template-editor', plantilla.id]);
-    
-    // Por ahora, solo mostrar mensaje
-    alert(`Editando: ${plantilla.nombre}`);
+     try {
+      console.log('🔄 Abriendo proyecto:', plantilla.id);
+      this.navegarAdmin(plantilla.id!);
+    } catch (error) {
+      console.error('❌ Error abriendo proyecto:', error);
+      alert('Error al abrir el proyecto');
+    }
+  }
+  private navegarAdmin(plantillaId: number): void {
+   
+    this.router.navigate(['/admin/design'], { queryParams: { proyecto: plantillaId} });
   }
 
   /**
@@ -462,7 +529,9 @@ private parsearConfiguracionVisual(data: any): any {
   /**
    * Obtener texto de uso
    */
-  getTextoUso(vecesUsada: number): string {
+   getTextoUso(plantilla: TemplateListItem): string {
+    const vecesUsada = this.getVecesUsada(plantilla);
+    
     if (vecesUsada === 0) return 'Nunca usada';
     if (vecesUsada === 1) return '1 vez usada';
     return `${vecesUsada} veces usada`;

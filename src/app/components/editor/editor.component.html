@@ -80,30 +80,13 @@
 
     <div class="section">
       
-      <button class="btn-outline full" (click)="cargarMisProyectos()">
+      <button class="btn-outline full" routerLink="/usuario/mis-proyectos">
         <i class="fa-solid fa-folder-open"></i> Ver mis Proyectos
       </button>
-      <button class="btn-outline full" (click)="abrirModalGuardarProyecto()">
-        <i class="fa-solid fa-save"></i> Guardar Actual
-      </button>
-
-      <div class="projects-list" *ngIf="misProyectos.length > 0">
-        <div *ngFor="let proyecto of misProyectos" 
-             class="project-card" 
-             (click)="cargarProyecto(proyecto.id!)">
-          <div class="project-icon">📊</div>
-          <div class="project-info">
-            <h5>{{ proyecto.titulo }}</h5>
-            <span>{{ proyecto.fechaModificacion | date:'shortDate' }}</span>
-          </div>
-        </div>
-      </div>
-
-     
     </div>
 
     <div class="section">
-      <h4>📝 Estilos de Texto</h4>
+      <h4>Estilos de Texto</h4>
       <div class="style-group">
         <label>Título</label>
         <select (change)="cambiarEstiloTexto('titulo', 'color', $any($event.target).value)">
@@ -305,7 +288,7 @@
 
 
 
-<!-- En editor.component.html -->
+<!-- 
 <div class="section">
   <h4>📏 Forma de Línea</h4>
   <select (change)="changeTimelineDesign($event)" class="form-select">
@@ -317,7 +300,7 @@
     </option>
   </select>
   
-  <!-- Información del diseño actual -->
+
   <div *ngIf="currentTimelineDesign" class="timeline-info">
     <small class="text-muted">
       {{currentTimelineDesign.description}}
@@ -325,11 +308,11 @@
       <strong>Tipo: {{getLayoutTypeName(currentTimelineDesign.layout.type)}}</strong>
     </small>
   </div>
-</div>
+</div>-->
 
 
 
-<!-- En editor.component.html - Opción 1: Usando (change) con $event -->
+<!-- 
 <div class="section">
   <h4>🎨 Diseño de Eventos</h4>
   <select (change)="changeEventDesign($event)" class="form-select">
@@ -341,7 +324,6 @@
     </option>
   </select>
   
-  <!-- Información del diseño actual -->
   <div *ngIf="currentEventDesign" class="design-info">
     <small class="text-muted">
       {{currentEventDesign.description}}
@@ -349,7 +331,7 @@
       <strong>{{currentEventDesign.elements.length}} elementos</strong>
     </small>
   </div>
-</div>
+</div>-->
 
 
 
@@ -483,10 +465,9 @@
 
 
 
-<div class="section">
+<!--<div class="section">
   <h4>📁 Importar Plantilla</h4>
   
-  <!-- Input oculto para seleccionar archivo -->
   <input 
     type="file" 
     id="import-plantilla" 
@@ -497,7 +478,7 @@
   <button class="btn-outline full" (click)="seleccionarArchivoPlantilla()">
     <i class="fa-solid fa-file-import"></i> Importar Plantilla JSON
   </button>
-</div>
+</div>-->
 
 
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient,  HttpParams} from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environment/environment';
 import { AuthService, CurrentUser } from './auth.service';
@@ -10,6 +10,25 @@ export interface Usuario {
   email: string;
   rol: string;
   plan: string;
+}
+
+
+export interface CambioContrasena {
+  contrasenaActual: string;
+  nuevaContrasena: string;
+}
+
+export interface PermisosResponse {
+  tienePermisos: boolean;
+}
+
+export interface EstadisticasUsuarios {
+  totalUsuarios: number;
+  usuariosPremium: number;
+  usuariosFree: number;
+  usuariosAdmin: number;
+  usuariosRegistradosEsteMes: number;
+  [key: string]: any;
 }
 
 @Injectable({
@@ -69,6 +88,46 @@ export class UsuarioService {
         }
       })
     );
+  }
+
+
+
+  // ===== MÉTODOS SOLO PARA ADMIN =====
+
+  // Obtener todos los usuarios (admin only)
+  obtenerTodosUsuarios(): Observable<Usuario[]> {
+    return this.http.get<Usuario[]>(this.apiUrl);
+  }
+
+  // Obtener usuario por ID (admin only)
+  obtenerUsuarioPorId(id: number): Observable<Usuario> {
+    return this.http.get<Usuario>(`${this.apiUrl}/${id}`);
+  }
+
+  // Actualizar plan de usuario (admin only)
+  actualizarPlanUsuario(id: number, plan: string): Observable<Usuario> {
+    return this.http.put<Usuario>(`${this.apiUrl}/${id}/plan`, { plan });
+  }
+
+  // Actualizar rol de usuario (admin only)
+  actualizarRolUsuario(id: number, rol: string): Observable<Usuario> {
+    return this.http.put<Usuario>(`${this.apiUrl}/${id}/rol`, { rol });
+  }
+
+   // Eliminar usuario (admin o propio usuario)
+  eliminarUsuario(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+    // Buscar usuarios por nombre (admin only)
+  buscarUsuariosPorNombre(nombre: string): Observable<Usuario[]> {
+    const params = new HttpParams().set('nombre', nombre);
+    return this.http.get<Usuario[]>(`${this.apiUrl}/buscar`, { params });
+  }
+
+  // Obtener estadísticas de usuarios (admin only)
+  obtenerEstadisticas(): Observable<EstadisticasUsuarios> {
+    return this.http.get<EstadisticasUsuarios>(`${this.apiUrl}/estadisticas`);
   }
 
   // Verificar si el usuario actual es premium

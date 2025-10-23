@@ -10,6 +10,19 @@ import {
 import { AuthService } from '../../../core/services/auth.service';
 import { TemplateListItem } from '../../../components/admin/gestion-plantillas/template-list.interface';
 
+
+export interface PlantillaUso {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  creadoPorId: number;
+  creadoPorNombre: string;
+  conteo: number;  // ← Este es el campo que necesitamos
+  tipoEstadistica: string;
+  categoriaId: number;
+  categoriaNombre: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -78,6 +91,11 @@ export class AdminTemplateService {
     )
   );
 }
+
+
+getVecesUsadaPlantillas(): Observable<PlantillaUso[]> {
+    return this.http.get<PlantillaUso[]>(`${this.apiUrl}/mas-usadas`);
+  }
 
   /**
    * Actualizar plantilla existente

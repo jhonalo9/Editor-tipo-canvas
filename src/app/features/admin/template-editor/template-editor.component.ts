@@ -19,6 +19,7 @@ import {
 import { lastValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { ArchivoService } from '../../../core/services/archivo.service';
+import { ActivatedRoute } from '@angular/router';
 
 type ToolType = 'select'| 'multi-select' | 'line' | 'rect' | 'circle' | 'text' | 'event-zone' | 'connector';
 
@@ -427,7 +428,10 @@ private quadraticBezier(p0: number, p1: number, p2: number, t: number): number {
   // Estado de guardado
  
 
-  constructor(private templateService: AdminTemplateService,private authService: AuthService,private archivoService: ArchivoService) {}
+  constructor(private templateService: AdminTemplateService,
+              private authService: AuthService,
+              private archivoService: ArchivoService,
+            private route: ActivatedRoute) {}
 
 
   private async obtenerUsuarioActual(): Promise<any> {
@@ -459,6 +463,19 @@ private quadraticBezier(p0: number, p1: number, p2: number, t: number): number {
     this.setupKeyboardShortcuts();
 
     this.changeTimelineType('horizontal');
+
+
+
+    this.route.queryParams.subscribe(params => {
+      const proyectoId = params['proyecto'];
+      
+      if (proyectoId) {
+        console.log('📂 Cargando plantilla desde URL:', proyectoId);
+        this.loadTemplate(Number(proyectoId));
+      } else {
+        console.log('📝 Iniciando editor sin plantilla');
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -3284,8 +3301,6 @@ onCategoriaChange(categoria: Categoria): void {
       // Cargar elementos decorativos
       this.decorativeElements = template.configuracionVisual.elementosDecorativos || [];
       this.reconstructDecorativeElements();
-
-      alert('✅ Plantilla cargada correctamente');
 
     } catch (error) {
       console.error('❌ Error cargando plantilla:', error);

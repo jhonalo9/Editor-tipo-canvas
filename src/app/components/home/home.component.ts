@@ -7,6 +7,7 @@ import { RouterModule } from '@angular/router';
 import { HeaderComponent } from "../header/header.component";
 import { FavoritoService } from '../../core/services/favorito.service';
 import { ProyectoService} from '../../core/services/proyecto.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -56,61 +57,159 @@ isLoggedIn = false;
   }
 
   // ✅ SOLO 12 PLANTILLAS MÁS POPULARES
-  cargarPlantillasPopulares(): void {
-    this.isLoading = true;
+cargarPlantillasPopulares(): void {
+  this.isLoading = true;
+  
+  this.plantillaService.getPlantillasPopulares().subscribe({
+    next: (plantillasPopulares: PlantillaEstadisticaDTO[]) => {
+      
+      const plantillasLimitadas = plantillasPopulares.slice(0, 12);
+      
+      // ✅ OBTENER PLANTILLAS COMPLETAS
+      this.obtenerPlantillasCompletas(plantillasLimitadas);
+    },
+    error: (error) => {
+      console.error('Error al cargar plantillas populares:', error);
+      this.isLoading = false;
+      this.plantillas = [];
+    }
+  });
+}
+
+
+private obtenerPlantillasCompletas(plantillasPopulares: PlantillaEstadisticaDTO[]): void {
+  if (plantillasPopulares.length === 0) {
+    this.plantillas = [];
+    this.isLoading = false;
+    return;
+  }
+
+  // ✅ Crear array de observables para obtener cada plantilla completa
+  const requests = plantillasPopulares.map(popular => 
+    this.plantillaService.getPlantillaById(popular.id)
+  );
+
+  // ✅ Esperar a que todas las requests se completen
+  forkJoin(requests).subscribe({
+    next: (plantillasCompletas: Plantilla[]) => {
+      
+      // ✅ Procesar plantillas con datos completos
+      this.plantillas = plantillasCompletas.map(plantilla => {
+        // Asignar portadaUrl
+        const portadaUrl = this.getPlantillaImage(plantilla);
+        (plantilla as any).portadaUrl = portadaUrl;
+        
+        // Inicializar favorito como false
+        plantilla.favorito = false;
+        
+        
+        return plantilla;
+      });
+      
+      // ✅ Cargar estados de favoritos
+      this.cargarEstadosFavoritos();
+      this.isLoading = false;
+    },
+    error: (error) => {
+      console.error('Error al cargar plantillas completas:', error);
+      
+      // ✅ FALLBACK: Usar las populares aunque no tengan data completa
+      console.warn('Usando fallback con datos básicos');
+      this.plantillas = this.convertirYProcesarPlantillas(plantillasPopulares);
+      this.cargarEstadosFavoritos();
+      this.isLoading = false;
+    }
+  });
+}
+
+ private convertirYProcesarPlantillas(plantillasPopulares: PlantillaEstadisticaDTO[]): Plantilla[] {
+  return plantillasPopulares.map(popular => {
+    // ✅ Crear objeto Plantilla básico para fallback
+    const plantilla: Plantilla = {
+      id: popular.id,
+      nombre: popular.nombre,
+      descripcion: popular.descripcion,
+      data: popular.data || {},
+      estado: 'ACTIVA',
+      esPublica: popular.esPublica || true,
+      creadoPorId: popular.creadoPorId || 0,
+      creadoPorNombre: popular.creadoPorNombre,
+      fechaCreacion: popular.fechaCreacion,
+      favorito: false
+    };
+
+    // ✅ Usar placeholder para la portada
+    (plantilla as any).portadaUrl = 'assets/images/placeholder-template.png';
+
+    return plantilla;
+  });
+}
+
+private obtenerPortadaDesdePlantillaPopular(plantilla: PlantillaEstadisticaDTO): string {
+  // 1. Verificar si hay portadaUrl directa en el DTO
+  if (plantilla.portadaUrl) {
+    return plantilla.portadaUrl;
+  }
+
+  // 2. Si hay data, intentar extraer la portada
+  if (plantilla.data) {
+    let dataParsed = plantilla.data;
     
-    this.plantillaService.getPlantillasPopulares().subscribe({
-      next: (plantillasPopulares: PlantillaEstadisticaDTO[]) => {
-        console.log('📊 Plantillas populares recibidas:', plantillasPopulares.length);
-        
-        // ✅ LIMITAR A SOLO 12 PLANTILLAS
-        const plantillasLimitadas = plantillasPopulares.slice(0, 12);
-        
-        // ✅ Convertir a formato Plantilla
-        this.plantillas = this.convertirYProcesarPlantillas(plantillasLimitadas);
-        
-        // ✅ Cargar estados de favoritos
-        this.cargarEstadosFavoritos();
-        this.isLoading = false;
-
-        console.log(`✅ Mostrando ${this.plantillas.length} plantillas populares`);
-      },
-      error: (error) => {
-        console.error('Error al cargar plantillas populares:', error);
-        this.isLoading = false;
-        this.plantillas = [];
+    // Si data es string, parsearlo
+    if (typeof plantilla.data === 'string') {
+      try {
+        dataParsed = JSON.parse(plantilla.data);
+      } catch (error) {
+        console.warn(`Error parseando data de ${plantilla.nombre}:`, error);
+        return 'assets/images/placeholder-template.png';
       }
-    });
+    }
+    
+    // Buscar portada en la estructura de datos
+    if (dataParsed?.portadaUrl) {
+      return dataParsed.portadaUrl;
+    }
+    
+    if (dataParsed?.configuracionVisual?.portadaUrl) {
+      return dataParsed.configuracionVisual.portadaUrl;
+    }
   }
 
-  // ✅ CORREGIDO: Usar solo métodos existentes
-  private convertirYProcesarPlantillas(plantillasPopulares: PlantillaEstadisticaDTO[]): Plantilla[] {
-    return plantillasPopulares.map(popular => {
-      // ✅ Usar parsePlantillaData que SÍ existe
-      const data = this.parsePlantillaEstadisticaData(popular);
-      
-      const portadaUrl = data?.portadaUrl || data?.configuracionVisual?.portadaUrl;
-      
-      // ✅ Crear objeto Plantilla
-      const plantilla: Plantilla = {
-        id: popular.id,
-        nombre: popular.nombre,
-        descripcion: popular.descripcion,
-        data: data,
-        estado: 'ACTIVA',
-        esPublica: popular.esPublica,
-        creadoPorId: 0,
-        creadoPorNombre: popular.creadoPorNombre,
-        fechaCreacion: popular.fechaCreacion,
-        favorito: false
-      };
+  // 3. Si no se encuentra portada, usar placeholder
+  return 'assets/images/placeholder-template.png';
+}
 
-      // ✅ Agregar portadaUrl para fácil acceso
-      (plantilla as any).portadaUrl = portadaUrl;
 
-      return plantilla;
-    });
+  private obtenerPortadaPlantilla(plantilla: PlantillaEstadisticaDTO, dataParsed: any): string {
+  // 1. Intentar desde la propiedad directa de PlantillaEstadisticaDTO
+  if (plantilla.portadaUrl) {
+    return plantilla.portadaUrl;
   }
+
+  // 2. Intentar desde dataParsed.portadaUrl
+  if (dataParsed?.portadaUrl) {
+    return dataParsed.portadaUrl;
+  }
+
+  // 3. Intentar desde dataParsed.configuracionVisual?.portadaUrl
+  if (dataParsed?.configuracionVisual?.portadaUrl) {
+    return dataParsed.configuracionVisual.portadaUrl;
+  }
+
+  // 4. Si data es string, intentar parsear nuevamente buscando específicamente la portada
+  if (typeof plantilla.data === 'string') {
+    try {
+      const stringData = JSON.parse(plantilla.data);
+      if (stringData.portadaUrl) return stringData.portadaUrl;
+      if (stringData.configuracionVisual?.portadaUrl) return stringData.configuracionVisual.portadaUrl;
+    } catch (e) {
+      console.warn('No se pudo parsear data como JSON:', e);
+    }
+  }
+
+  console.warn(`❌ No se encontró portada para plantilla: ${plantilla.nombre}`);
+  return 'assets/images/placeholder-template.png';
+}
 
   // ✅ NUEVO MÉTODO: Parsear datos de PlantillaEstadisticaDTO
   private parsePlantillaEstadisticaData(plantilla: PlantillaEstadisticaDTO): any {
@@ -192,24 +291,42 @@ isLoggedIn = false;
     });
   }
 
-  getPlantillaImage(plantilla: Plantilla): string {
-    const portadaUrl = (plantilla as any).portadaUrl;
-    if (portadaUrl) {
-      return portadaUrl;
-    }
+getPlantillaImage(plantilla: Plantilla): string {
+  // 1. Verificar si ya tenemos una portadaUrl asignada
+  if ((plantilla as any).portadaUrl && (plantilla as any).portadaUrl !== 'assets/images/placeholder-template.png') {
+    return (plantilla as any).portadaUrl;
+  }
 
-    const data = this.plantillaService.parsePlantillaData(plantilla);
-    if (data?.portadaUrl) {
-      return data.portadaUrl;
-    }
-
-    if (data?.configuracionVisual?.portadaUrl) {
-      return data.configuracionVisual.portadaUrl;
-    }
-
+  // 2. Si no hay data, retornar placeholder inmediatamente
+  if (!plantilla.data || Object.keys(plantilla.data).length === 0) {
     return 'assets/images/placeholder-template.png';
   }
 
+  // 3. Intentar extraer portada de la data
+  let dataParsed = plantilla.data;
+  
+  // Si data es string, parsearlo
+  if (typeof plantilla.data === 'string') {
+    try {
+      dataParsed = JSON.parse(plantilla.data);
+    } catch (error) {
+      console.warn(`Error parseando data de ${plantilla.nombre}:`, error);
+      return 'assets/images/placeholder-template.png';
+    }
+  }
+
+  // Buscar portada en diferentes ubicaciones
+  if (dataParsed?.portadaUrl) {
+    return dataParsed.portadaUrl;
+  }
+
+  if (dataParsed?.configuracionVisual?.portadaUrl) {
+    return dataParsed.configuracionVisual.portadaUrl;
+  }
+
+  // 4. Fallback a placeholder
+  return 'assets/images/placeholder-template.png';
+}
   onImageError(event: any, plantilla: Plantilla): void {
     const img = event.target;
     console.warn(`❌ Error cargando imagen para plantilla ${plantilla.id}:`, plantilla.nombre);
@@ -218,25 +335,15 @@ isLoggedIn = false;
 
   crearProyecto(): void {
     if (this.isLoggedIn) {
-      this.router.navigate(['/usuario/descripcion-proyect']);
+      this.router.navigate(['/plantillas']);
     } else {
       this.router.navigate(['/login']);
     }
   }
 
-  /*usarPlantilla(plantilla: Plantilla): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/usuario/descripcion-proyect'], { 
-        state: { plantilla: plantilla } 
-      });
-    } else {
-      this.router.navigate(['/login']);
-    }
-  }*/
-
 
   usarPlantilla(plantilla: any): void {
-  console.log('✅ Plantilla seleccionada:', plantilla);
+  //console.log('✅ Plantilla seleccionada:', plantilla);
   
   // ✅ USAR NUEVO MÉTODO con interfaz correcta
   this.proyectoService.setProyectoTemporal({
@@ -246,10 +353,15 @@ isLoggedIn = false;
     plantillaData: plantilla // ← Guardar plantilla completa
   });
 
+  if (this.authService.isLoggedIn()) {
   // Redirigir al formulario
   this.router.navigate(['/usuario/descripcion-proyect'], {
     queryParams: { plantillaId: plantilla.id }
   });
+
+  } else {
+      this.router.navigate(['/login']);
+    }
 }
 
   getPlantillaTheme(plantilla: Plantilla): string {

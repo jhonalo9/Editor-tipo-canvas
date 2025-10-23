@@ -66,7 +66,7 @@ export class RegisterComponent {
           if (response.usuario.rol === 'ADMIN') { // ← Cambiado a 'ADMIN' en mayúsculas
             this.router.navigate(['/admin/plantillas']);
           } else {
-            this.router.navigate(['/usuario/descripcion-proyect']);
+            this.router.navigate(['/plantillas']);
           }
         }, 1500);
       },

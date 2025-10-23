@@ -9,6 +9,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { PlantillaService } from '../../core/services/plantilla.service';
 import { Router } from '@angular/router';
 import { environment } from '../../environment/environment';
+import { ProyectoService } from '../../core/services/proyecto.service';
 
 @Component({
   selector: 'app-mis-favoritos',
@@ -34,6 +35,7 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
     private favoritoService: FavoritoService,
     private plantillaService: PlantillaService,
     private authService: AuthService,
+    private proyectoService:ProyectoService,
     private router: Router
   ) {}
 
@@ -50,7 +52,6 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (favoritos: FavoritoResponseDTO[]) => {
-          console.log('📦 Favoritos básicos recibidos:', favoritos);
           this.cargarInformacionCompletaPlantillas(favoritos);
         },
         error: (error) => {
@@ -91,7 +92,6 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (plantillasCompletas: any[]) => {
-          console.log('✅ Plantillas completas cargadas:', plantillasCompletas);
           this.plantillasFavoritas = plantillasCompletas.map((plantilla, index) => ({
             ...plantilla,
             favorito: true,
@@ -121,25 +121,19 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
   }
 
   getPlantillaImage(plantilla: any): string {
-    console.log('🔍 Buscando imagen para plantilla:', plantilla);
 
     // 1. Buscar en data parseada
     const data = this.plantillaService.parsePlantillaData(plantilla);
-    console.log('📊 Data parseada:', data);
 
     if (data?.portadaUrl) {
-      console.log('✅ Encontrado en data.portadaUrl:', data.portadaUrl);
       return this.construirUrlCompleta(data.portadaUrl);
     }
-
     if (data?.configuracionVisual?.portadaUrl) {
-      console.log('✅ Encontrado en data.configuracionVisual.portadaUrl:', data.configuracionVisual.portadaUrl);
       return this.construirUrlCompleta(data.configuracionVisual.portadaUrl);
     }
 
     // 2. Buscar en propiedades directas
     if (plantilla.portadaUrl) {
-      console.log('✅ Encontrado en plantilla.portadaUrl:', plantilla.portadaUrl);
       return this.construirUrlCompleta(plantilla.portadaUrl);
     }
 
@@ -154,12 +148,9 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
 
     for (const prop of propiedadesImagen) {
       if (prop) {
-        console.log('✅ Encontrado en propiedad alternativa:', prop);
         return this.construirUrlCompleta(prop);
       }
     }
-
-    console.log('❌ No se encontró imagen, usando placeholder');
     return 'assets/images/placeholder-template.png';
   }
 
@@ -181,7 +172,6 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
   }
 
   onImageError(event: any, plantilla: any): void {
-    console.warn(`❌ Error cargando imagen para plantilla ${plantilla.id}:`, plantilla.nombre);
     const img = event.target;
     img.src = 'assets/images/placeholder-template.png';
   }
@@ -214,7 +204,6 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          console.log('Favorito eliminado:', response.message);
           
           // Remover de la lista local
           this.plantillasFavoritas = this.plantillasFavoritas.filter(p => p.id !== plantillaId);
@@ -248,7 +237,7 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
   }
 
   // Navegación
-  usarPlantilla(plantilla: any): void {
+  /*usarPlantilla(plantilla: any): void {
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/usuario/descripcion-proyect'], { 
         state: { plantilla: plantilla } 
@@ -256,7 +245,33 @@ export class MisFavoritosComponent implements OnInit, OnDestroy {
     } else {
       this.router.navigate(['/login']);
     }
-  }
+  }*/
+
+  usarPlantilla(plantilla: any): void {
+  
+  const plantillaProcesada = {
+    ...plantilla,
+    data: plantilla.data || this.plantillaService.parsePlantillaData(plantilla)
+  };
+  // ✅ USAR NUEVO MÉTODO con interfaz correcta
+  this.proyectoService.setProyectoTemporal({
+    titulo: '', // Se llenará en crear-proyecto
+    descripcion: '',
+    plantillaId: plantilla.id,
+    plantillaData: plantillaProcesada // ← Guardar plantilla completa
+  });
+if (this.authService.isLoggedIn()) {
+  // Redirigir al formulario
+  this.router.navigate(['/usuario/descripcion-proyect'], {
+    queryParams: { plantillaId: plantilla.id }
+  });
+
+  } else {
+      this.router.navigate(['/login']);
+    }
+}
+
+
 
   formatFecha(fechaString: string): string {
     if (!fechaString) return 'Fecha no disponible';

@@ -136,12 +136,12 @@ export class ProyectoService {
 
   setProyectoTemporal(proyecto: ProyectoTemporal): void {
   this.proyectoTemporal.next(proyecto);
-  console.log('📦 Proyecto temporal guardado:', {
+  /*console.log('📦 Proyecto temporal guardado:', {
     titulo: proyecto.titulo,
     descripcion: proyecto.descripcion,
     tienePlantilla: !!proyecto.plantillaData,
     nombrePlantilla: proyecto.plantillaData?.nombre || proyecto.plantillaData?.titulo
-  });
+  });*/
 }
 
   getProyectoTemporal(): ProyectoTemporal | null {

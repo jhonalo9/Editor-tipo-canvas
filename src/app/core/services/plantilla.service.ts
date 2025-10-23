@@ -36,6 +36,8 @@ export interface PlantillaEstadisticaDTO {
   creadoPorNombre: string;
   fechaCreacion: string;
   portadaUrl?: string;
+
+  creadoPorId?: number;
   
   // Estadísticas
   totalFavoritos: number;

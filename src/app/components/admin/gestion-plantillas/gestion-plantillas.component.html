@@ -12,45 +12,12 @@
     <p class="text-muted">Administra y edita tus plantillas de líneas de tiempo</p>
   </div>
 
-  <div>
-    <button routerLink="/TemplateEditorComponent" >crear +</button>
-  </div>
+  
 
   <!-- Controles -->
   <div class="controls-card">
     <div class="row align-items-center">
-      <div class="col-md-6">
-        <!-- Botones de vista -->
-        <div class="btn-group" role="group">
-          <button type="button" 
-                  class="btn" 
-                  [class.btn-primary]="vista === 'mis-plantillas'"
-                  [class.btn-outline-primary]="vista !== 'mis-plantillas'"
-                  (click)="cambiarVista('mis-plantillas')">
-            <i class="fas fa-user me-1"></i>
-            Mis Plantillas ({{misPlantillas.length}})
-          </button>
-          <button type="button" 
-                  class="btn" 
-                  [class.btn-primary]="vista === 'publicas'"
-                  [class.btn-outline-primary]="vista !== 'publicas'"
-                  (click)="cambiarVista('publicas')">
-            <i class="fas fa-globe me-1"></i>
-            Públicas ({{plantillasPublicas.length}})
-          </button>
-          <button *ngIf="esAdmin" 
-                  type="button" 
-                  class="btn" 
-                  [class.btn-primary]="vista === 'todas'"
-                  [class.btn-outline-primary]="vista !== 'todas'"
-                  (click)="cambiarVista('todas')">
-            <i class="fas fa-crown me-1"></i>
-            Todas ({{todasPlantillas.length}})
-          </button>
-        </div>
-      </div>
-      
-      <div class="col-md-6">
+    <div class="col-md-4">
         <!-- Buscador -->
         <div class="input-group">
           <span class="input-group-text">
@@ -63,7 +30,39 @@
                  (input)="filtro = $any($event.target).value">
         </div>
       </div>
+
+      <div class="col-md-4">
+       <select class="form-select" (change)="cambiarVista($any($event.target).value)">
+        <option value="mis-plantillas" [selected]="vista === 'mis-plantillas'">
+          <i class="fas fa-user me-1"></i>
+          Mis Plantillas 
+        </option>
+        <option value="publicas" [selected]="vista === 'publicas'">
+          <i class="fas fa-globe me-1"></i>
+          Públicas 
+        </option>
+        <option *ngIf="esAdmin" value="todas" [selected]="vista === 'todas'">
+          <i class="fas fa-crown me-1"></i>
+          Todas
+        </option>
+      </select>
+      </div>
+
+      <div class="col-md-4">
+  <h4>
+    <span *ngIf="vista === 'mis-plantillas'">{{misPlantillas.length}}</span>
+    <span *ngIf="vista === 'publicas'">{{plantillasPublicas.length}}</span>
+    <span *ngIf="vista === 'todas' && esAdmin">{{todasPlantillas.length}}</span>
+    Plantillas
+  </h4>
+</div>
+      
+     
     </div>
+  </div>
+
+  <div>
+    <button routerLink="/admin/design" class="btn btn-dark m-3 btn-lg" >crear +</button>
   </div>
 
   <!-- Estado de carga -->
@@ -134,7 +133,7 @@
               </small>
               <small class="text-muted">
                 <i class="fas fa-chart-bar me-1"></i>
-                {{getTextoUso(plantilla.metadatos?.vecesUsada || 0)}}
+                {{ getTextoUso(plantilla) }}
               </small>
             </div>
 
@@ -223,7 +222,7 @@
               </li>
               <li>
                 <strong>Veces usada:</strong> 
-                {{plantillaSeleccionada.metadatos.vecesUsada || 0}}
+                {{ getVecesUsada(plantillaSeleccionada) }}
               </li>
               <li *ngIf="plantillaSeleccionada.configuracionVisual?.canvasWidth">
                 <strong>Dimensiones:</strong> 

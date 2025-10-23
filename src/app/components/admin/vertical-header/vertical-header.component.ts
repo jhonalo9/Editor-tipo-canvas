@@ -37,7 +37,7 @@ getIcon(iconName: string): string {
     {
       icon: 'dashboard',
       label: 'Dashboard',
-      route: '/admin/dashboard',
+      route: '/admin/home',
       isActive: false
     },
     {
@@ -64,7 +64,7 @@ getIcon(iconName: string): string {
       route: '/admin/estadisticas',
       isActive: false
     },
-    {
+    /*{
       icon: 'settings',
       label: 'Configuración',
       route: '/admin/configuracion',
@@ -75,7 +75,7 @@ getIcon(iconName: string): string {
       label: 'Ayuda',
       route: '/admin/ayuda',
       isActive: false
-    }
+    }*/
   ];
 
   bottomMenuItems: MenuItem[] = [
