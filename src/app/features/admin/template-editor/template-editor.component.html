@@ -2,48 +2,16 @@
 
 <div class="admin-editor-container">
   
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <div class="brand">
-      <h2>🎨 Editor de Plantillas - Admin</h2>
-    </div>
-    
-    <div class="top-actions">
-      <button class="btn btn-secondary" (click)="newTemplate()">
-        <i class="fas fa-file"></i> Nueva
-      </button>
-      
-      <button class="btn btn-primary" (click)="saveTemplate()" [disabled]="isSaving">
-        <i class="fas fa-save"></i> {{ isSaving ? 'Guardando...' : 'Guardar' }}
-      </button>
-      
-      <button 
-        class="btn btn-accent" 
-        (click)="togglePreview()"
-        [class.active]="previewMode">
-        <i class="fas fa-eye"></i> {{ previewMode ? 'Editar' : 'Vista Previa' }}
-      </button>
-
-      <!--<button class="btn btn-info" (click)="exportTemplateAsJSON()">
-        <i class="fas fa-download"></i> Exportar JSON
-      </button>-->
-
-      <label class="btn btn-info" style="cursor: pointer; margin: 0;">
-        <i class="fas fa-upload"></i> Importar JSON
-        <input 
-          type="file" 
-          (change)="importTemplateFromJSON($event)" 
-          accept=".json"
-          style="display: none;">
-      </label>
-    </div>
-  </div>
-
+  <!-- WORKSPACE -->
   <div class="workspace">
     
     <!-- SIDEBAR IZQUIERDO - Herramientas -->
     <aside class="sidebar-left">
       
+      <div class="section workspace-header">
+        <h2>Editor de Plantillas - Admin</h2>
+      </div>
+
       <div class="section">
         <h4>🛠️ Herramientas</h4>
         
@@ -58,13 +26,13 @@
           </button>
       
            <button 
-    class="tool-btn" 
-    [class.active]="currentTool === 'multi-select'"
-    (click)="selectTool('multi-select')"
-    title="Selección Múltiple (M)">
-    <i class="fas fa-vector-square"></i>
-    <span>Selección Múltiple</span>
-  </button>
+            class="tool-btn" 
+            [class.active]="currentTool === 'multi-select'"
+            (click)="selectTool('multi-select')"
+            title="Selección Múltiple (M)">
+            <i class="fas fa-vector-square"></i>
+            <span>Selección Múltiple</span>
+          </button>
           
           <button 
             class="tool-btn event-zone-btn" 
@@ -78,7 +46,7 @@
       </div>
 
       <div class="section">
-    <h4>📈 Tipo de Línea</h4>
+    <h4>Tipo de Línea</h4>
     
     <div class="line-type-grid">
       <button 
@@ -144,15 +112,15 @@
       <span>Conducto en S</span>
     </button>
       
-      <button 
+      <!--<button 
         class="line-type-btn" 
         [class.active]="currentTool === 'line'"
             (click)="selectTool('line')"
         title="Dibujo Libre">
         <i class="fas fa-pencil-alt"></i>
         <span>Libre</span>
-      </button>
-    </div>
+      </button>-->
+  </div>
 
     <!-- Opciones específicas para S-curve -->
   <div class="line-options" *ngIf="timelineConfig.tipo === 's-curve'">
@@ -244,7 +212,7 @@
   </div>
 
       <div class="section">
-        <h4>🎨 Estilo de Línea</h4>
+        <h4>Estilo de Línea</h4>
         
         <div class="form-group">
           <label>Color:</label>
@@ -279,7 +247,7 @@
       </div>
 
       <div class="section">
-        <h4>🎨 Fondo</h4>
+        <h4>Fondo</h4>
         <input 
           type="color" 
           [(ngModel)]="backgroundColor"
@@ -322,7 +290,7 @@
       </div>
 
       <div class="section">
-        <h4>⌨️ Atajos</h4>
+        <h4>Atajos</h4>
         <ul class="shortcuts-list">
           <li><kbd>V</kbd> Seleccionar</li>
           <li><kbd>L</kbd> Línea</li>
@@ -338,444 +306,397 @@
     </aside>
 
     <!-- ÁREA DE CANVAS -->
-    <main class="canvas-area">
-      <div class="canvas-wrapper">
-        <div #container id="konva-container"></div>
-      </div>
-      
-      <div class="canvas-info">
-        <span>📐 {{ canvasWidth }}x{{ canvasHeight }}px</span>
-        <span>🛠️ <strong>{{ currentTool }}</strong></span>
-        <span *ngIf="eventZones.length > 0">
-          📍 <strong>{{ eventZones.length }}</strong> zonas
-        </span>
-        <span *ngIf="decorativeElements.length > 0">
-          🎨 <strong>{{ decorativeElements.length }}</strong> elementos
-        </span>
-      </div>
-    </main>
+   <!-- ÁREA DE CANVAS -->
+<main class="canvas-area">
+  
+  <!-- Controles de zoom - posición absoluta -->
+ 
+  
+  <!-- Contenedor principal del canvas -->
+  <div class="canvas-wrapper">
+    <div #container id="konva-container" [style.transform]="'scale(' + zoomLevel + ')'"></div>
+  </div>
+  
+  <!-- Información del canvas -->
+  <div class="canvas-info">
+    <span>📐 {{ canvasWidth }}x{{ canvasHeight }}px</span>
+    <span>🛠️ <strong>{{ currentTool }}</strong></span>
+    <span *ngIf="eventZones.length > 0">
+      <strong>{{ eventZones.length }}</strong> zonas
+    </span>
+    <span *ngIf="decorativeElements.length > 0">
+      <strong>{{ decorativeElements.length }}</strong> elementos
+    </span>
+
+     <div class="zoom-controls">
+    <button class="btn btn-sm" (click)="zoomOut()" title="Zoom Out" [disabled]="zoomLevel <= 0.3">
+      <i class="fas fa-search-minus"></i>
+    </button>
+    <span class="zoom-level">{{ (zoomLevel * 100).toFixed(0) }}%</span>
+    <button class="btn btn-sm" (click)="zoomIn()" title="Zoom In" [disabled]="zoomLevel >= 2">
+      <i class="fas fa-search-plus"></i>
+    </button>
+    <button class="btn btn-sm" (click)="resetZoom()" title="Reset Zoom">
+      <i class="fas fa-sync-alt"></i>
+    </button>
+  </div>
+  </div>
+</main>
 
     <!-- SIDEBAR DERECHO - Propiedades -->
     <aside class="sidebar-right">
       
-      <div class="section">
-        <h4>📋 Información de Plantilla</h4>
-        
-        <div class="form-group">
-          <label>Nombre:*</label>
-          <input 
-            type="text" 
-            [(ngModel)]="templateName"
-            placeholder="Ej: Línea Histórica Clásica"
-            class="form-input">
-        </div>
-        
-        <div class="form-group">
-          <label>Descripción:</label>
-          <textarea 
-            [(ngModel)]="templateDescription"
-            placeholder="Describe tu plantilla..."
-            rows="3"
-            class="form-textarea"></textarea>
-        </div>
-        
-        <div class="form-group">
-          <label for="categoria">Categoría:</label>
-          <select  id="categoria" [(ngModel)]="selectedCategoria" (change)="onCategoriaChange(selectedCategoria)" class="form-select">
-             <option *ngFor="let cat of categorias" [ngValue]="cat">
-      {{ cat.nombre }}
-    </option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label class="checkbox-label">
+      <!-- Botones de acción -->
+     <div class="section actions-section">
+  <div class="top-actions">
+    <button class="btn btn-primary full-width" (click)="openSaveModal()" [disabled]="isSaving">
+      <i class="fas fa-save"></i> {{ isSaving ? 'Guardando...' : 'Guardar' }}
+    </button>
+    
+    <div class="secondary-actions">
+      <button 
+        class="btn btn-accent" 
+        (click)="togglePreview()"
+        [class.active]="previewMode">
+        <i class="fas fa-eye"></i> {{ previewMode ? 'Editar' : 'Vista Previa' }}
+      </button>
+
+      <button class="btn btn-secondary" (click)="newTemplate()">
+        <i class="fas fa-file"></i> Nueva
+      </button>
+    </div>
+  </div>
+</div>
+
+     <div class="section">
+  <h4>Zonas de Eventos ({{ eventZones.length }})</h4>
+  
+  <div class="info-box" *ngIf="eventZones.length === 0">
+    <p>Usa la herramienta <strong>"Zona Evento"</strong> para definir dónde aparecerán los eventos.</p>
+    <small>Las zonas definen el layout y estilo de cada evento.</small>
+  </div>
+  
+  <div class="zones-list" *ngIf="eventZones.length > 0">
+    <div 
+      *ngFor="let zone of eventZones; let i = index"
+      class="zone-item"
+      [class.selected]="selectedZone === zone"
+      (click)="selectZone(zone)">
+      
+      <div class="zone-header">
+        <div class="zone-header-compact">
+          <!-- Fila 1: Número y nombre -->
+          <div class="zone-header-top">
+            <span class="zone-number">{{ i + 1 }}</span>
             <input 
-              type="checkbox" 
-              [(ngModel)]="isPublic">
-            <span>Hacer pública para usuarios</span>
-          </label>
+              type="text" 
+              [(ngModel)]="zone.nombre"
+              class="zone-name-input"
+              (click)="$event.stopPropagation()"
+              placeholder="Nombre de la zona">
+          </div>
+          
+          <!-- Fila 2: Acciones -->
+          <div class="zone-actions-row">
+            <div class="zone-actions-left">
+              <button 
+                class="btn-icon-compact"
+                (click)="changeZoneOrder(zone, 'up'); $event.stopPropagation()"
+                [disabled]="i === 0"
+                title="Subir zona">
+                <i class="fas fa-arrow-up"></i>
+              </button>
+              <button 
+                class="btn-icon-compact"
+                (click)="changeZoneOrder(zone, 'down'); $event.stopPropagation()"
+                [disabled]="i === eventZones.length - 1"
+                title="Bajar zona">
+                <i class="fas fa-arrow-down"></i>
+              </button>
+            </div>
+            
+            <div class="zone-actions-right">
+              <button 
+                class="btn-icon-compact btn-duplicate"
+                (click)="duplicateEventZone(zone); $event.stopPropagation()"
+                title="Duplicar zona">
+                <i class="fas fa-copy"></i>
+              </button>
+              <button 
+                class="btn-icon-compact btn-delete"
+                (click)="deleteEventZone(zone); $event.stopPropagation()"
+                title="Eliminar zona">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+      
+      <div class="zone-info">
+        <small>
+          📐 {{ zone.posicion.x | number:'1.0-0' }}, {{ zone.posicion.y | number:'1.0-0' }}
+          &nbsp;·&nbsp;
+          {{ zone.posicion.anchoMaximo | number:'1.0-0' }} × {{ zone.posicion.altoMaximo | number:'1.0-0' }}
+          &nbsp;·&nbsp;
+          <strong>{{ zone.elementos.length }}</strong> elemento(s)
+        </small>
+      </div>
+      
+      <!-- ✅ CONFIGURACIÓN SOLO SI LA ZONA ESTÁ SELECCIONADA -->
+      <div class="zone-config" *ngIf="selectedZone === zone">
+        <h5>Elementos del Evento</h5>
 
-      <div class="section">
-        <h4>📍 Zonas de Eventos ({{ eventZones.length }})</h4>
-        
-        <div class="info-box" *ngIf="eventZones.length === 0">
-          <p>👆 Usa la herramienta <strong>"Zona Evento"</strong> para definir dónde aparecerán los eventos.</p>
-          <small>Las zonas definen el layout y estilo de cada evento.</small>
-        </div>
-        
-        <div class="zones-list" *ngIf="eventZones.length > 0">
-          <div 
-            *ngFor="let zone of eventZones; let i = index"
-            class="zone-item"
-            [class.selected]="selectedZone === zone"
-            (click)="selectedZone = zone">
-            
-            <div class="zone-header">
-              <span class="zone-number">{{ i + 1 }}</span>
-              <input 
-                type="text" 
-                [(ngModel)]="zone.nombre"
-                class="zone-name-input"
-                (click)="$event.stopPropagation()">
-              
-              <div class="zone-actions">
+        <!-- Botones para agregar elementos -->
+        <div class="elementos-toolbar">
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'contenedor')"
+            [disabled]="debeDeshabilitarBoton(zone, 'contenedor')"
+            [title]="debeDeshabilitarBoton(zone, 'contenedor') ? 'Ya existe un contenedor' : 'Agregar contenedor'">
+            <i class="fas fa-square"></i> Contenedor
+          </button>
 
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'imagen')"
+            [disabled]="debeDeshabilitarBoton(zone, 'imagen')"
+            title="Agregar imagen">
+            <i class="fas fa-image"></i> Imagen
+          </button>
 
-                <button 
-                  class="btn-icon"
-                  (click)="changeZoneOrder(zone, 'up'); $event.stopPropagation()"
-                  [disabled]="i === 0"
-                  title="Subir">
-                  <i class="fas fa-arrow-up"></i>
-                </button>
-                <button 
-                  class="btn-icon"
-                  (click)="changeZoneOrder(zone, 'down'); $event.stopPropagation()"
-                  [disabled]="i === eventZones.length - 1"
-                  title="Bajar">
-                  <i class="fas fa-arrow-down"></i>
-                </button>
-                <button 
-                  class="btn-icon btn-delete"
-                  (click)="deleteEventZone(zone); $event.stopPropagation()"
-                  title="Eliminar zona">
-                  <i class="fas fa-trash"></i>
-                </button>
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'titulo')"
+            [disabled]="debeDeshabilitarBoton(zone, 'titulo')"
+            title="Agregar título">
+            <i class="fas fa-heading"></i> Título
+          </button>
 
-                <button 
-    class="btn-icon btn-duplicate"
-    (click)="duplicateEventZone(zone); $event.stopPropagation()"
-    title="Duplicar evento completo">
-    <i class="fas fa-copy"></i>
-  </button>
-              </div>
-            </div>
-            
-            <div class="zone-info">
-              <small>
-                📐 {{ zone.posicion.x | number:'1.0-0' }}, {{ zone.posicion.y | number:'1.0-0' }}
-                &nbsp;·&nbsp;
-                {{ zone.posicion.anchoMaximo | number:'1.0-0' }} × {{ zone.posicion.altoMaximo | number:'1.0-0' }}
-              </small>
-            </div>
-            
-            <div class="zone-config" *ngIf="selectedZone === zone">
-  <h5>🎨 Elementos del Evento</h5>
-  
-  <!-- Botones para agregar elementos -->
-  <div class="elementos-toolbar">
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'contenedor')"
-    [disabled]="debeDeshabilitarBoton(zone, 'contenedor')"
-    [title]="debeDeshabilitarBoton(zone, 'contenedor') ? 'Ya existe un contenedor' : 'Agregar contenedor'">
-    <i class="fas fa-square"></i> Contenedor
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'imagen')"
-    [disabled]="debeDeshabilitarBoton(zone, 'imagen')"
-    title="Agregar imagen">
-    <i class="fas fa-image"></i> Imagen
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'titulo')"
-    [disabled]="debeDeshabilitarBoton(zone, 'titulo')"
-    title="Agregar título">
-    <i class="fas fa-heading"></i> Título
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'fecha')"
-    [disabled]="debeDeshabilitarBoton(zone, 'fecha')"
-    title="Agregar fecha">
-    <i class="fas fa-calendar"></i> Fecha
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'descripcion')"
-    [disabled]="debeDeshabilitarBoton(zone, 'descripcion')"
-    title="Agregar descripción">
-    <i class="fas fa-paragraph"></i> Descripción
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'link')"
-    [disabled]="debeDeshabilitarBoton(zone, 'link')"
-    title="Agregar enlace">
-    <i class="fas fa-link"></i> Link
-  </button>
-  
-  <button class="btn btn-sm" 
-    (click)="agregarElementoAZona(zone, 'personaje')"
-    [disabled]="debeDeshabilitarBoton(zone, 'personaje')"
-    title="Agregar personaje">
-    <i class="fas fa-user"></i> Personaje
-  </button>
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'fecha')"
+            [disabled]="debeDeshabilitarBoton(zone, 'fecha')"
+            title="Agregar fecha">
+            <i class="fas fa-calendar"></i> Fecha
+          </button>
 
-    <button class="btn btn-sm" (click)="agregarElementoAZona(zone, 'forma')">
-      <i class="fas fa-shapes"></i> Forma
-    </button>
-  </div>
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'descripcion')"
+            [disabled]="debeDeshabilitarBoton(zone, 'descripcion')"
+            title="Agregar descripción">
+            <i class="fas fa-paragraph"></i> Descripción
+          </button>
 
-  <!-- Lista de elementos -->
-  <div class="elementos-list" *ngIf="zone.elementos.length > 0">
-    <div *ngFor="let elemento of zone.elementos" class="elemento-item">
-      <div class="elemento-header">
-        <span class="elemento-icon">
-          <i [class]="getIconForElementType(elemento.tipo)"></i>
-        </span>
-        <span class="elemento-name">{{ getElementTypeName(elemento.tipo) }}</span>
-        
-        <div class="elemento-actions">
-          <label class="checkbox-label small">
-            <input type="checkbox" [(ngModel)]="elemento.visible" 
-                   (change)="actualizarElemento(zone, elemento)">
-            Visible
-          </label>
-          <button class="btn-icon btn-delete" 
-                  (click)="eliminarElementoDeZona(zone, elemento)"
-                  title="Eliminar elemento">
-            <i class="fas fa-trash"></i>
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'link')"
+            [disabled]="debeDeshabilitarBoton(zone, 'link')"
+            title="Agregar enlace">
+            <i class="fas fa-link"></i> Link
+          </button>
+          
+          <button class="btn btn-sm" 
+            (click)="agregarElementoAZona(zone, 'personaje')"
+            [disabled]="debeDeshabilitarBoton(zone, 'personaje')"
+            title="Agregar personaje">
+            <i class="fas fa-user"></i> Personaje
+          </button>
+
+          <button class="btn btn-sm" (click)="agregarElementoAZona(zone, 'forma')">
+            <i class="fas fa-shapes"></i> Forma
           </button>
         </div>
-      </div>
 
-      <!-- Configuración del elemento -->
-      <div class="elemento-config" *ngIf="elemento.visible">
+        <!-- ✅ LISTA DE ELEMENTOS DE ESTA ZONA -->
+        <div class="elementos-list" *ngIf="zone.elementos.length > 0">
+          <div *ngFor="let elemento of zone.elementos" 
+               class="elemento-item"
+               [class.selected]="selectedElement === elemento && selectedZone === zone"
+               (click)="selectElementForEditing(zone, elemento); $event.stopPropagation()">
+            
+            <div class="elemento-header">
+              <span class="elemento-icon">
+                <i [class]="getIconForElementType(elemento.tipo)"></i>
+              </span>
+              <span class="elemento-name">{{ getElementTypeName(elemento.tipo) }}</span>
+              
+              <div class="elemento-actions" (click)="$event.stopPropagation()">
+                <button class="btn-icon btn-delete" 
+                        (click)="eliminarElementoDeZona(zone, elemento); $event.stopPropagation()"
+                        title="Eliminar elemento">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- ✅ CONFIGURACIÓN SOLO SI ESTE ELEMENTO ESTÁ SELECCIONADO -->
+            <div class="elemento-config" 
+                 *ngIf="selectedElement === elemento && selectedZone === zone"
+                 (click)="$event.stopPropagation()">
+              
+              <!-- Posición y tamaño -->
+              <div class="form-group-inline-compact">
+                <div>
+                  <label>X:</label>
+                  <input type="number" [(ngModel)]="elemento.x" 
+                        (change)="actualizarPropiedadElemento(zone, elemento, 'x', elemento.x)"
+                        class="form-input-xxs">
+                </div>
+                <div>
+                  <label>Y:</label>
+                  <input type="number" [(ngModel)]="elemento.y" 
+                        (change)="actualizarPropiedadElemento(zone, elemento, 'y', elemento.y)"
+                        class="form-input-xxs">
+                </div>
+              </div>
+              
+              <div class="form-group-inline-compact">
+                <div>
+                  <label>Ancho:</label>
+                  <input type="number" [(ngModel)]="elemento.width" 
+                        (change)="actualizarPropiedadElemento(zone, elemento, 'width', elemento.width)"
+                        class="form-input-xxs">
+                </div>
+                <div>
+                  <label>Alto:</label>
+                  <input type="number" [(ngModel)]="elemento.height" 
+                        (change)="actualizarPropiedadElemento(zone, elemento, 'height', elemento.height)"
+                        class="form-input-xxs">
+                </div>
+              </div>
+
+              <!-- Resto de la configuración (igual que antes) -->
+              <div *ngIf="elemento.tipo === 'titulo' || elemento.tipo === 'fecha' || elemento.tipo === 'descripcion' || elemento.tipo === 'personaje' || elemento.tipo === 'link'">
+                <textarea *ngIf="elemento.tipo !== 'link'" 
+                          [(ngModel)]="elemento.configuracion.texto" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'texto', elemento.configuracion.texto)"
+                          placeholder="Texto..."
+                          class="form-textarea-xxs"></textarea>
+                
+                <div class="form-group-inline-compact">
+                  <div>
+                    <label>Tamaño:</label>
+                    <input type="number" [(ngModel)]="elemento.configuracion.fontSize" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'fontSize', elemento.configuracion.fontSize)"
+                          class="form-input-xxs">
+                  </div>
+                  <div>
+                    <label>Color:</label>
+                    <input type="color" [(ngModel)]="elemento.configuracion.color" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'color', elemento.configuracion.color)"
+                          class="color-input-xxs">
+                  </div>
+                </div>
+
+                <div class="form-group-inline-compact" *ngIf="elemento.tipo === 'titulo'">
+                  <div class="restriccion-item">
+                    <input type="checkbox" [checked]="elemento.configuracion.fontWeight === 'bold'"
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'fontWeight', $any($event.target).checked ? 'bold' : 'normal')"
+                          class="checkbox-xxs">
+                    <label>Negrita</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Configuración de formas e imágenes -->
+              <div *ngIf="elemento.tipo === 'imagen' || elemento.tipo === 'forma' || elemento.tipo === 'contenedor'">
+                <div class="control-group">
+                  <label>Forma:</label>
+                  <select [(ngModel)]="elemento.configuracion.forma" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
+                          class="form-select-xxs">
+                    <option value="rectangulo">🟦 Rectángulo</option>
+                    <option value="circulo">⭕ Círculo</option>
+                    <option value="estrella">⭐ Estrella</option>
+                    <option value="rombo">🔷 Rombo</option>
+                    <option value="linea" *ngIf="elemento.tipo !== 'imagen'">📏 Línea</option>
+                    <option value="linea-punteada" *ngIf="elemento.tipo !== 'imagen'">--- Punteada</option>
+                    <option value="flecha" *ngIf="elemento.tipo !== 'imagen'">➡️ Flecha</option>
+                  </select>
+                </div>
+
+                <div class="form-group-inline-compact">
+                  <div>
+                    <label>Fondo:</label>
+                    <input type="color" [(ngModel)]="elemento.configuracion.fill" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'fill', elemento.configuracion.fill)"
+                          class="color-input-xxs">
+                  </div>
+                  <div>
+                    <label>Borde:</label>
+                    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
+                          class="color-input-xxs">
+                  </div>
+                </div>
+
+                <div class="form-group-inline-compact" *ngIf="elemento.configuracion.forma === 'rectangulo'">
+                  <div>
+                    <label>Esquinas:</label>
+                    <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
+                          class="form-input-xxs">
+                  </div>
+                  <div>
+                    <label>Ancho borde:</label>
+                    <input type="number" [(ngModel)]="elemento.configuracion.strokeWidth" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'strokeWidth', elemento.configuracion.strokeWidth)"
+                          class="form-input-xxs">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rotación -->
+              <div class="control-group">
+                <label>Rotación:</label>
+                <div class="form-group-inline-compact">
+                  <div style="grid-column: 1 / -1;">
+                    <input type="range" [(ngModel)]="elemento.configuracion.rotation" 
+                          (change)="actualizarConfiguracionElemento(zone, elemento, 'rotation', elemento.configuracion.rotation)"
+                          min="0" max="360" step="1"
+                          class="slider">
+                    <span class="value">{{ elemento.configuracion.rotation }}°</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Restricciones -->
+              <div class="restricciones-compact">
+                <h6>🔒 Restricciones</h6>
+                <div class="restricciones-grid">
+                  <div class="restriccion-item">
+                    <input type="checkbox" 
+                          [checked]="getRestriccionMovable(elemento)"
+                          (change)="actualizarRestriccionMovable(zone, elemento, $any($event.target).checked)"
+                          class="checkbox-xxs">
+                    <label>Mover</label>
+                  </div>
+                  <div class="restriccion-item">
+                    <input type="checkbox" 
+                          [checked]="getRestriccionResizable(elemento)"
+                          (change)="actualizarRestriccionResizable(zone, elemento, $any($event.target).checked)"
+                          class="checkbox-xxs">
+                    <label>Redimensionar</label>
+                  </div>
+                  <div class="restriccion-item">
+                    <input type="checkbox" 
+                          [checked]="getRestriccionRotatable(elemento)"
+                          (change)="actualizarRestriccionRotatable(zone, elemento, $any($event.target).checked)"
+                          class="checkbox-xxs">
+                    <label>Rotar</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         
-        <!-- Posición y tamaño -->
-        <div class="form-group-inline">
-          <label>X:</label>
-          <input type="number" [(ngModel)]="elemento.x" 
-                 (change)="actualizarPropiedadElemento(zone, elemento, 'x', elemento.x)"
-                 class="form-input-xs">
-          <label>Y:</label>
-          <input type="number" [(ngModel)]="elemento.y" 
-                 (change)="actualizarPropiedadElemento(zone, elemento, 'y', elemento.y)"
-                 class="form-input-xs">
+        <!-- Mensaje si no hay elementos -->
+        <div class="info-box-small" *ngIf="zone.elementos.length === 0">
+          <small>No hay elementos en esta zona. Usa los botones de arriba para agregar elementos.</small>
         </div>
-        
-        <div class="form-group-inline">
-          <label>Ancho:</label>
-          <input type="number" [(ngModel)]="elemento.width" 
-                 (change)="actualizarPropiedadElemento(zone, elemento, 'width', elemento.width)"
-                 class="form-input-xs">
-          <label>Alto:</label>
-          <input type="number" [(ngModel)]="elemento.height" 
-                 (change)="actualizarPropiedadElemento(zone, elemento, 'height', elemento.height)"
-                 class="form-input-xs">
-        </div>
-
-        <!-- <div *ngIf="elemento.tipo === 'link'">          
-          <div class="form-group-inline">
-            <label>Tamaño:</label>
-            <input type="number" [(ngModel)]="elemento.configuracion.fontSize" 
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontSize', elemento.configuracion.fontSize)"
-                   class="form-input-xs">
-            <label>Color:</label>
-            <input type="color" [(ngModel)]="elemento.configuracion.color" 
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'color', elemento.configuracion.color)"
-                   class="color-input-xs">
-          </div>
-        </div>-->
-
-        <!-- Configuración específica por tipo -->
-        <div *ngIf="elemento.tipo === 'titulo' || elemento.tipo === 'fecha' || elemento.tipo === 'descripcion'|| elemento.tipo === 'personaje'|| elemento.tipo === 'link'" >
-          <textarea [(ngModel)]="elemento.configuracion.texto" 
-                    (change)="actualizarConfiguracionElemento(zone, elemento, 'texto', elemento.configuracion.texto)"
-                    placeholder="Texto..."
-                    rows="2"
-                    class="form-textarea-sm" *ngIf="elemento.tipo !== 'link'"></textarea>
-          
-          <div class="form-group-inline">
-            <label>Tamaño:</label>
-            <input type="number" [(ngModel)]="elemento.configuracion.fontSize" 
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontSize', elemento.configuracion.fontSize)"
-                   class="form-input-xs">
-            <label>Color:</label>
-            <input type="color" [(ngModel)]="elemento.configuracion.color" 
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'color', elemento.configuracion.color)"
-                   class="color-input-xs">
-          </div>
-
-          <div class="form-group-inline" *ngIf="elemento.tipo === 'titulo'">
-            <label>Negrita:</label>
-            <input type="checkbox" [checked]="elemento.configuracion.fontWeight === 'bold'"
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'fontWeight', $any($event.target).checked ? 'bold' : 'normal')"
-                   class="checkbox-sm">
-          </div>
-        </div>
-
-        <div *ngIf="elemento.tipo === 'imagen'">
-  <div class="form-group-inline">
-    <label>Forma:</label>
-    <select [(ngModel)]="elemento.configuracion.forma" 
-            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
-            class="form-select-xs">
-      <option value="rectangulo">🟦 Rectángulo</option>
-      <option value="circulo">⭕ Círculo</option>
-      <option value="estrella">⭐ Estrella</option>
-      <option value="rombo">🔷 Rombo</option>
-      
-    </select>
-  </div>
-
-  <label>Color borde:</label>
-    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
-           class="color-input-xs">
-  <label>Tamaño borde:</label>
-    <input type="number" [(ngModel)]="elemento.configuracion.strokeWidth " 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'strokeWidth ', elemento.configuracion.strokeWidth )"
-           class="form-input-xs">
-  
-  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
-    <label>Radio esquinas:</label>
-    <input type="number" [(ngModel)]="elemento.configuracion.borderRadius" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'borderRadius', elemento.configuracion.borderRadius)"
-           class="form-input-xs">
-  </div>
-</div>
-<div *ngIf="elemento.tipo === 'forma'">
-  <div class="form-group-inline">
-    <label>Forma:</label>
-    <select [(ngModel)]="elemento.configuracion.forma" 
-            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
-            class="form-select-xs">
-     <option value="rectangulo">🟦 Rectángulo</option>
-      <option value="circulo">⭕ Círculo</option>
-      <option value="estrella">⭐ Estrella</option>
-      <option value="rombo">🔷 Rombo</option>
-      <option value="linea">📏 Línea</option>
-      <option value="linea-punteada">--- Línea Punteada</option>
-      <option value="flecha">➡️ Flecha</option>
-    </select>
-  </div>
-  
-  
-  <div class="form-group-inline">
-    <label>Color fondo:</label>
-    <input type="color" [(ngModel)]="elemento.configuracion.fill" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'fill', elemento.configuracion.fill)"
-           class="color-input-xs">
-    <label>Color borde:</label>
-    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
-           class="color-input-xs">
-  </div>
-
-  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
-    <label>Radio esquinas:</label>
-    <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
-           class="form-input-xs">
-  </div>
-</div>
-
-<div *ngIf="elemento.tipo === 'contenedor'">
-  <div class="form-group-inline">
-    <label>Forma:</label>
-    <select [(ngModel)]="elemento.configuracion.forma" 
-            (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
-            class="form-select-xs">
-      <option value="rectangulo">🟦 Rectángulo</option>
-      <option value="circulo">⭕ Círculo</option>
-      <option value="estrella">⭐ Estrella</option>
-      <option value="rombo">🔷 Rombo</option>
-     
-      <option value="linea">📏 Línea</option>
-      <option value="linea-punteada">--- Línea Punteada</option>
-      <option value="flecha">➡️ Flecha</option>
-      
-    </select>
-  </div>
-  
-  
-  <div class="form-group-inline">
-    <label>Color fondo:</label>
-    <input type="color" [(ngModel)]="elemento.configuracion.fill" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'fill', elemento.configuracion.fill)"
-           class="color-input-xs">
-    <label>Color borde:</label>
-    <input type="color" [(ngModel)]="elemento.configuracion.stroke" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'stroke', elemento.configuracion.stroke)"
-           class="color-input-xs">
-  </div>
-
-  <div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
-    <label>Radio esquinas:</label>
-    <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
-           (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
-           class="form-input-xs">
-  </div>
-</div>
-
-        <div *ngIf="elemento.tipo === 'contenedor' || elemento.tipo === 'forma'">
-          <!--<div class="form-group-inline">
-            <label>Forma:</label>
-            <select [(ngModel)]="elemento.configuracion.forma" 
-                    (change)="actualizarConfiguracionElemento(zone, elemento, 'forma', elemento.configuracion.forma)"
-                    class="form-select-xs">
-              <option value="rectangulo">Rectángulo</option>
-              <option value="circulo">Círculo</option>
-            </select>
-          </div>-->
-          <!--<div class="form-group-inline" *ngIf="elemento.configuracion.forma === 'rectangulo'">
-            <label>Radio esquinas:</label>
-            <input type="number" [(ngModel)]="elemento.configuracion.cornerRadius" 
-                   (change)="actualizarConfiguracionElemento(zone, elemento, 'cornerRadius', elemento.configuracion.cornerRadius)"
-                   class="form-input-xs">
-          </div>-->
-        </div>
-
-        <!-- Rotación para todos los elementos -->
-        <div class="form-group-inline">
-          <label>Rotación:</label>
-          <input type="number" [(ngModel)]="elemento.configuracion.rotation" 
-                 (change)="actualizarConfiguracionElemento(zone, elemento, 'rotation', elemento.configuracion.rotation)"
-                 min="0" max="360" step="1"
-                 class="form-input-xs">
-          <span>°</span>
-        </div>
-        <!-- Restricciones -->
-<div class="restricciones">
-  <h6>🔒 Restricciones</h6>
-  <div class="form-group-inline">
-    <label>Mover:</label>
-    <input type="checkbox" 
-           [checked]="getRestriccionMovable(elemento)"
-           (change)="actualizarRestriccionMovable(zone, elemento, $any($event.target).checked)"
-           class="checkbox-sm">
-  </div>
-  <div class="form-group-inline">
-    <label>Redimensionar:</label>
-    <input type="checkbox" 
-           [checked]="getRestriccionResizable(elemento)"
-           (change)="actualizarRestriccionResizable(zone, elemento,$any($event.target).checked)"
-           class="checkbox-sm">
-  </div>
-  <div class="form-group-inline">
-    <label>Rotar:</label>
-    <input type="checkbox" 
-           [checked]="getRestriccionRotatable(elemento)"
-           (change)="actualizarRestriccionRotatable(zone, elemento, $any($event.target).checked)"
-           class="checkbox-sm">
-  </div>
-</div>
-
       </div>
     </div>
   </div>
 </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="section">
+      <!--<div class="section">
         <h4>🎭 Elementos Decorativos ({{ decorativeElements.length }})</h4>
         
         <div class="info-box" *ngIf="decorativeElements.length === 0">
@@ -797,9 +718,9 @@
             </button>
           </li>
         </ul>
-      </div>
+      </div>-->
 
-      <div class="section">
+      <!--<div class="section">
         <h4>🗑️ Acciones</h4>
         <button 
           class="btn btn-danger full" 
@@ -807,7 +728,7 @@
           [disabled]="currentTool !== 'select'">
           <i class="fas fa-trash"></i> Eliminar Seleccionado
         </button>
-      </div>
+      </div>-->
       
     </aside>
     
@@ -815,9 +736,69 @@
   
 </div>
 
+<!-- Modal para guardar plantilla -->
+<!-- Modal para guardar plantilla -->
+<div class="custom-modal-backdrop" *ngIf="showSaveModal">
+  <div class="custom-modal">
+    <div class="custom-modal-header">
+      <h3>Guardar Plantilla</h3>
+      <button class="btn-icon" (click)="closeSaveModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="custom-modal-body">
+      <div class="section">         
+        <h4>Información de Plantilla</h4>                  
+        <div class="form-group">           
+          <label>Nombre:*</label>           
+          <input 
+            type="text" 
+            [(ngModel)]="templateName"
+            placeholder="Ej: Línea Histórica Clásica"
+            class="form-input">         
+        </div>                  
+        
+        <div class="form-group">           
+          <label>Descripción:</label>           
+          <textarea 
+            [(ngModel)]="templateDescription"
+            placeholder="Describe tu plantilla..."
+            rows="3"
+            class="form-textarea"></textarea>         
+        </div>                  
+        
+        <div class="form-group">           
+          <label for="categoria">Categoría:</label>           
+          <select id="categoria" [(ngModel)]="selectedCategoria" (change)="onCategoriaChange(selectedCategoria)" class="form-select">              
+            <option *ngFor="let cat of categorias" [ngValue]="cat">               
+              {{ cat.nombre }}              
+            </option>           
+          </select>         
+        </div>                         
+        
+        <div class="form-group">               
+          <label class="checkbox-label">                 
+            <input 
+              type="checkbox" 
+              [(ngModel)]="isPublic">                 
+            <span>Hacer pública para usuarios</span>               
+          </label>             
+        </div>       
+      </div>
+    </div>
+    
+    <div class="custom-modal-footer">
+      <button class="btn btn-secondary" (click)="closeSaveModal()">Cancelar</button>
+      <button class="btn btn-primary" (click)="saveTemplate()" [disabled]="isSaving || !templateName">
+        <i class="fas fa-save"></i> {{ isSaving ? 'Guardando...' : 'Guardar Plantilla' }}
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- En la barra de herramientas o panel de configuración -->
-<div class="portada-controls">
+<!--<div class="portada-controls">
   <button type="button" 
           class="btn btn-outline-info" 
           (click)="abrirModalPortada()"
@@ -825,8 +806,8 @@
     <i class="fas fa-image"></i> Portada
   </button>
   
-  <!-- Indicador de portada existente -->
+
   <span *ngIf="proyectoPortada" class="portada-indicator">
     <i class="fas fa-check-circle text-success"></i>
   </span>
-</div>
+</div>-->

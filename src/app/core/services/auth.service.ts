@@ -9,6 +9,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface GoogleLoginRequest {
+  code: string;
+}
+
 export interface RegisterRequest {
   nombre: string;
   email: string;
@@ -39,6 +43,7 @@ export interface CurrentUser {
   rol: string;
   plan: string;
   token: string;
+  googleId?: string; //NUEVO
 }
 
 @Injectable({
@@ -88,7 +93,21 @@ login(credentials: LoginRequest): Observable<AuthResponse> {
       })
     );
   }
-
+ loginWithGoogle(code: string): Observable<AuthResponse> {
+    const request: GoogleLoginRequest = { code };
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/google`, request).pipe(
+      tap(response => {
+        const userData: CurrentUser = {
+          ...response.usuario,
+          token: response.token
+        };
+        
+        localStorage.setItem('authToken', response.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        this.currentUserSubject.next(userData);
+      })
+    );
+  }
 
   private clearStorage(): void {
     localStorage.removeItem('authToken');
@@ -98,6 +117,10 @@ login(credentials: LoginRequest): Observable<AuthResponse> {
   getUserRole(): string {
     return this.currentUserSubject.value?.rol || 'usuario';
   }
+   getUserPlan(): string {
+    return this.currentUserSubject.value?.plan || 'FREE';
+  }
+
 
   getCurrentUser(): CurrentUser | null {
   return this.currentUserSubject.value;
@@ -125,9 +148,6 @@ login(credentials: LoginRequest): Observable<AuthResponse> {
 
 
 
-  etToken(): string | null {
-  return localStorage.getItem('authToken');
-}
 
 isTokenValid(token: string): boolean {
   try {

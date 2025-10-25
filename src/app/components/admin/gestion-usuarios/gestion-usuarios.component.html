@@ -167,9 +167,9 @@
   <!-- MODALES FUERA DEL MAIN-CONTENT -->
 
   <!-- Modal Editar Usuario -->
-  <div *ngIf="showEditModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
+  <div *ngIf="showEditModal" class="custion-modal-overlay">
+    <div class="custion-modal">
+      <div class="custion-modal-header">
         <h3>Editar Usuario: {{selectedUsuario?.nombre}}</h3>
         <button (click)="cerrarModales()" class="close-btn">×</button>
       </div>
@@ -199,9 +199,9 @@
   </div>
 
   <!-- Modal Cambiar Plan -->
-  <div *ngIf="showPlanModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
+  <div *ngIf="showPlanModal" class="custion-modal-overlay">
+    <div class="custion-modal">
+      <div class="custion-modal-header">
         <h3>Cambiar Plan: {{selectedUsuario?.nombre}}</h3>
         <button (click)="cerrarModales()" class="close-btn">×</button>
       </div>
@@ -230,9 +230,9 @@
   </div>
 
   <!-- Modal Cambiar Rol -->
-  <div *ngIf="showRolModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
+  <div *ngIf="showRolModal" class="custion-modal-overlay">
+    <div class="custion-modal">
+      <div class="custion-modal-header">
         <h3>Cambiar Rol: {{selectedUsuario?.nombre}}</h3>
         <button (click)="cerrarModales()" class="close-btn">×</button>
       </div>
@@ -261,9 +261,9 @@
   </div>
 
   <!-- Modal Confirmar Eliminación -->
-  <div *ngIf="showDeleteConfirm" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
+  <div *ngIf="showDeleteConfirm" class="custion-modal-overlay">
+    <div class="custion-modal">
+      <div class="custion-modal-header">
         <h3>Confirmar Eliminación</h3>
         <button (click)="cerrarModales()" class="close-btn">×</button>
       </div>

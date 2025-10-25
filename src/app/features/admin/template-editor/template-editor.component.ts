@@ -47,7 +47,37 @@ export class TemplateEditorComponent implements OnInit, OnDestroy {
 
   clipboard: any[] = [];
 
+showSaveModal: boolean = false;
 
+// Métodos para manejar el modal
+openSaveModal() {
+  this.showSaveModal = true;
+}
+
+closeSaveModal() {
+  this.showSaveModal = false;
+}
+
+
+
+
+zoomLevel: number = 0.8;
+
+zoomIn() {
+  if (this.zoomLevel < 2) {
+    this.zoomLevel += 0.1;
+  }
+}
+
+zoomOut() {
+  if (this.zoomLevel > 0.3) {
+    this.zoomLevel -= 0.1;
+  }
+}
+
+resetZoom() {
+  this.zoomLevel = 0.8;
+}
 
    selectionRect: Konva.Rect | null = null;
   isSelectingMultiple: boolean = false;
@@ -62,6 +92,8 @@ export class TemplateEditorComponent implements OnInit, OnDestroy {
   backgroundColor: string = '#ffffff';
 
   currentTemplateId?: number;
+
+  selectedElement: ElementoEvento | null = null;
 
 
   // NUEVAS PROPIEDADES PARA PORTADA
@@ -995,6 +1027,7 @@ private setupDrawingEvents(): void {
       if (e.target === this.stage) {
         this.transformer.nodes([]);
         this.selectedZone = null;
+        this.selectedElement = null;
         this.decorLayer.batchDraw();
       }
     }
@@ -1748,6 +1781,45 @@ private obtenerTextoElemento(elemento: ElementoEvento): string {
   }
 }
 
+
+selectElementForEditing(zone: ZonaEvento, elemento: ElementoEvento): void {
+  // Establecer elemento seleccionado
+  this.selectedElement = elemento;
+  this.selectedZone = zone;
+  
+  // Buscar el grupo visual del elemento
+  const grupo = this.eventsLayer.findOne((node: Konva.Node) => {
+    return node.getAttr('elementId') === elemento.id;
+  });
+
+  if (grupo && grupo instanceof Konva.Group) {
+    // Seleccionar visualmente en el canvas
+    this.transformer.nodes([grupo]);
+    this.transformer.visible(true);
+    
+    // Configurar transformer según restricciones
+    this.transformer.enabledAnchors(
+      elemento.restricciones?.resizable ? 
+      ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] : 
+      []
+    );
+    this.transformer.rotateEnabled(elemento.restricciones?.rotatable ?? true);
+    
+    this.decorLayer.batchDraw();
+  }
+}
+
+
+selectZone(zone: ZonaEvento): void {
+  this.selectedZone = zone;
+  this.selectedElement = null; // Limpiar elemento seleccionado
+  
+  // Deseleccionar elementos en el canvas
+  this.transformer.nodes([]);
+  this.transformer.visible(false);
+  this.decorLayer.batchDraw();
+}
+
 /**
  * Crear forma para elemento de imagen
  */
@@ -2127,6 +2199,9 @@ private isRomboPoints(points: number[]): boolean {
 }
 seleccionarElementoEvento(group: Konva.Group, elemento: ElementoEvento): void {
   const isCtrlKey = (window.event as any)?.ctrlKey || (window.event as any)?.metaKey;
+
+  const zoneId = group.getAttr('zoneId');
+  const zone = this.eventZones.find(z => z.id === zoneId);
   
   if (isCtrlKey) {
     // Agregar/remover de la selección múltiple
@@ -2135,6 +2210,9 @@ seleccionarElementoEvento(group: Konva.Group, elemento: ElementoEvento): void {
     // Selección simple
     this.transformer.nodes([group]);
     this.transformer.visible(true);
+
+     this.selectedZone = zone || null;
+    this.selectedElement = elemento;
     
     // Configurar transformer según restricciones
     this.transformer.enabledAnchors(
@@ -3025,6 +3103,198 @@ private renderizarElementoPreview(group: Konva.Group, zone: ZonaEvento, elemento
   this.isSaving = true;
 
   try {
+    // Obtener usuario actual y verificar si es premium
+    const usuarioActual = await this.obtenerUsuarioActual();
+    const usuarioId = usuarioActual?.id || 1;
+    const esUsuarioPremium = this.authService.getUserPlan(); // Método que verifica si el usuario es premium
+
+    // ✅ PASO 1: Serializar línea de tiempo (UNA SOLA VEZ)
+    this.timelineConfig.elementosKonva = [];
+    this.timelineLayer.children?.forEach((child: Konva.Node) => {
+      if (child instanceof Konva.Shape) {
+        this.timelineConfig.elementosKonva!.push(
+          this.serializeKonvaElement(child)
+        );
+      }
+    });
+
+    // ✅ PASO 2: Generar portada automática si no hay una
+    let portadaUrl: string | undefined;
+    if (!this.portadaArchivo) {
+      await this.generarPortadaDesdeProyecto();
+    }
+
+    // ✅ PASO 3: Generar thumbnail
+    const thumbnail = await this.templateService.generateThumbnail(this.stage);
+
+    // ✅ PASO 4: Preparar categoría
+    const categoria = this.selectedCategoria || this.templateCategory;
+
+    // ✅ PASO 5: Crear objeto de plantilla (SIN portadaUrl aún)
+    const template: AdminTemplate = {
+      nombre: this.templateName,
+      descripcion: this.templateDescription,
+      categoria: categoria,
+      esPublica: this.isPublic,
+      configuracionVisual: {
+        canvasWidth: this.canvasWidth,
+        canvasHeight: this.canvasHeight,
+        backgroundColor: this.backgroundColor,
+        lineaDeTiempo: this.timelineConfig,
+        zonasEventos: this.eventZones,
+        elementosDecorativos: this.decorativeElements,
+        // portadaUrl se agregará después de subirla
+        portadaUrl: portadaUrl
+      },
+      metadatos: {
+        fechaCreacion: new Date(),
+        fechaModificacion: new Date(),
+        creadoPor: usuarioId,
+        version: '1.0',
+        vecesUsada: 0,
+        thumbnail: thumbnail,
+        // portadaUrl se agregará después
+        portadaUrl: portadaUrl, // ✅ También en metadatos
+        portada: this.portadaArchivo?.name,
+        //esPremium: esUsuarioPremium // ✅ Nuevo campo para identificar plantillas premium
+      }
+    };
+
+    console.log('💾 Guardando plantilla base...');
+    console.log('👑 Estado premium del usuario:', esUsuarioPremium);
+
+    let plantillaId: number;
+
+    // ✅ PASO 6: Guardar/actualizar plantilla PRIMERO para obtener el ID
+    if (this.currentTemplateId) {
+      // Actualizar plantilla existente
+      await lastValueFrom(
+        this.templateService.updateTemplate(this.currentTemplateId, template)
+      );
+      plantillaId = this.currentTemplateId;
+      console.log('✅ Plantilla base actualizada (ID:', plantillaId, ')');
+    } else {
+      // Crear nueva plantilla
+      const response = await lastValueFrom(
+        this.templateService.createTemplate(template)
+      );
+      plantillaId = response.id;
+      this.currentTemplateId = plantillaId;
+      console.log('✅ Plantilla base creada (ID:', plantillaId, ')');
+    }
+
+    // ✅ PASO 7: Ahora SÍ subir la portada (ya tenemos el ID garantizado)
+    if (this.portadaArchivo && plantillaId) {
+      try {
+        console.log('📤 Subiendo portada de plantilla...');
+        console.log('   Usuario ID:', usuarioId);
+        console.log('   Plantilla ID:', plantillaId);
+        console.log('   Archivo:', this.portadaArchivo.name);
+        console.log('   Tipo de usuario:', esUsuarioPremium ? 'PREMIUM' : 'Estándar');
+        
+        let respuesta: any;
+        
+        // ✅ DECISIÓN: Subir portada según tipo de usuario
+        if (esUsuarioPremium) {
+          console.log('👑 Usuario premium - usando subirPortadaProyectoPremium');
+          respuesta = await lastValueFrom(
+            this.archivoService.subirPortadaProyectoPremium(
+              this.portadaArchivo, 
+              usuarioId, 
+              plantillaId
+            )
+          );
+        } else {
+          console.log('👤 Usuario estándar - usando subirPortadaPlantillaAdmin');
+          respuesta = await lastValueFrom(
+            this.archivoService.subirPortadaPlantillaAdmin(
+              this.portadaArchivo, 
+              usuarioId, 
+              plantillaId
+            )
+          );
+        }
+
+        const portadaUrl = this.archivoService.obtenerUrlDesdeRespuesta(respuesta);
+        console.log('✅ Portada subida exitosamente');
+        console.log('   URL obtenida:', portadaUrl);
+        console.log('   Método usado:', esUsuarioPremium ? 'Premium' : 'Estándar');
+
+        // ✅ PASO 8: Actualizar el objeto template con la portada
+        template.id = plantillaId; // Asegurar que tenga el ID
+        template.metadatos.portadaUrl = portadaUrl;
+        template.metadatos.portada = this.portadaArchivo.name;
+        template.configuracionVisual.portadaUrl = portadaUrl;
+        
+        console.log('📝 Template con portada ANTES de enviar:', {
+          id: template.id,
+          metadatos_portadaUrl: template.metadatos.portadaUrl,
+          configuracionVisual_portadaUrl: template.configuracionVisual.portadaUrl,
+          //esPremium: template.metadatos.esPremium
+        });
+        
+        const resultadoActualizacion = await lastValueFrom(
+          this.templateService.updateTemplate(plantillaId, template)
+        );
+        
+        console.log('✅ Plantilla actualizada con portada');
+        console.log('📦 Respuesta del backend:', resultadoActualizacion);
+        
+      } catch (error) {
+        console.error('❌ Error subiendo portada:', error);
+        console.warn('⚠️ Plantilla guardada pero sin portada');
+        // No fallar todo el guardado por la portada
+      }
+    } else {
+      if (!this.portadaArchivo) {
+        console.warn('⚠️ No hay archivo de portada para subir');
+      }
+      if (!plantillaId) {
+        console.error('❌ No se pudo obtener el ID de la plantilla');
+      }
+    }
+
+    // ✅ PASO 9: Mensaje de éxito
+    const accion = this.currentTemplateId !== plantillaId ? 'creada' : 'actualizada';
+    const tipoUsuario = esUsuarioPremium ? 'premium' : 'estándar';
+    alert(`✅ Plantilla ${tipoUsuario} ${accion} correctamente`);
+
+  } catch (error) {
+    console.error('❌ Error guardando plantilla:', error);
+    
+    // Mensaje de error más descriptivo
+    if (error instanceof Error) {
+      alert(`Error al guardar la plantilla: ${error.message}`);
+    } else {
+      alert('Error al guardar la plantilla');
+    }
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+
+
+/*async saveTemplate(): Promise<void> {
+  // Validaciones iniciales
+  if (!this.templateName.trim()) {
+    alert('Por favor, ingresa un nombre para la plantilla');
+    return;
+  }
+
+  if (this.eventZones.length === 0) {
+    alert('Por favor, define al menos una zona de evento');
+    return;
+  }
+
+  if (!this.authService.isLoggedIn()) {
+    alert('Debes iniciar sesión para guardar plantillas');
+    return;
+  }
+
+  this.isSaving = true;
+
+  try {
     // Obtener usuario actual
     const usuarioActual = await this.obtenerUsuarioActual();
     const usuarioId = usuarioActual?.id || 1;
@@ -3178,7 +3448,7 @@ private renderizarElementoPreview(group: Konva.Group, zone: ZonaEvento, elemento
   } finally {
     this.isSaving = false;
   }
-}
+}*/
 
 onCategoriaChange(categoria: Categoria): void {
     this.selectedCategoria = categoria;

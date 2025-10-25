@@ -24,13 +24,12 @@
       <ul class="navbar-nav align-items-center gap-2" *ngIf="isLoggedIn">
         <li class="nav-item">
           <a 
-  class="nav-link" 
-  routerLink="/" 
-  routerLinkActive="active" 
-  [routerLinkActiveOptions]="{ exact: true }"
->
-  Inicio
-</a>
+            class="nav-link" 
+               routerLink="/" 
+               routerLinkActive="active" 
+               [routerLinkActiveOptions]="{ exact: true }">
+          Inicio
+        </a>
         </li>
         <li class="nav-item">
           <a class="nav-link" routerLink="/plan" routerLinkActive="active">Plan</a>
@@ -64,13 +63,19 @@
         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 glass-dropdown" aria-labelledby="userMenu">
           <li>
             <a class="dropdown-item" routerLink="/usuario/mis-proyectos">
-              <i class="fas fa-folder-open me-2 text-primary"></i> Mis Proyectos
+              <i class="fas fa-folder-open me-2"></i> Mis Proyectos
             </a>
           </li>
           <li><hr class="dropdown-divider"></li>
           <li>
             <a class="dropdown-item" routerLink="/usuario/mis-favoritos">
-              <i class="bi bi-star-fill me-2"></i> Plantillas
+              <i class="bi bi-star-fill me-2"></i> Favoritos
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item" routerLink="/usuario/mis-plantillas">
+               <i class="bi bi-award-fill"></i> Mis Plantillas
             </a>
           </li>
           <li><hr class="dropdown-divider"></li>

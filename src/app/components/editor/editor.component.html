@@ -131,8 +131,8 @@
   <span class="size-value">{{containerSize}}%</span>
   
   <div class="presentacion">
-    <button class="presentacion-btn" [class.active]="isPresentacionMode" title="Modo Presentación">
-      <!--<button (click)="togglePresentacion()" class="presentacion-btn" [class.active]="isPresentacionMode" title="Modo Presentación">-->
+   
+      <button (click)="togglePresentacion()" class="presentacion-btn" [class.active]="isPresentacionMode" title="Modo Presentación">
       <i class="bi bi-tv"></i>
       <span>{{ isPresentacionMode ? 'Salir' : 'Presentación' }}</span>
     </button>

@@ -138,4 +138,65 @@ button:disabled {
   color: #5848d1;
 }
 
+/* login.component.css */
+.google-login-section {
+  margin-bottom: 2rem;
+}
+
+.google-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #dadce0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.separator {
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+  color: #6c757d;
+}
+
+.separator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e1e5e9;
+}
+
+.separator span {
+  background: white;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 1;
+}
+
 

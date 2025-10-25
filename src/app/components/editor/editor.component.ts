@@ -192,75 +192,222 @@ public originalCanvasHeight: number = 0;
   }
 
 
-  ngOnDestroy(): void {
+  /*ngOnDestroy(): void {
     if (this.isPresentacionMode) {
       document.removeEventListener('keydown', this.handleEscapeKey);
       document.body.classList.remove('presentacion-mode');
       document.body.style.overflow = '';
     }
+  }*/
+
+    ngOnDestroy(): void {
+  if (this.isPresentacionMode) {
+    this.exitFullscreen();
   }
+  
+  document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+  document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+  document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
+  document.removeEventListener('msfullscreenchange', this.handleFullscreenChange);
+}
 resetContainerSize(): void {
   this.containerSize = 90;
   this.onContainerSizeChange();
 }
 
 togglePresentacion(): void {
-    this.isPresentacionMode = !this.isPresentacionMode;
-    
-    if (this.isPresentacionMode) {
-      this.enterPresentacionMode();
-    } else {
-      this.exitPresentacionMode();
-    }
+  if (!this.isPresentacionMode) {
+    this.enterFullscreen();
+  } else {
+    this.exitFullscreen();
   }
+}
+
+private enterFullscreen(): void {
+  const container = document.getElementById('konva-container');
+  
+  if (!container) {
+    console.error('Container no encontrado');
+    return;
+  }
+
+  // Intentar entrar en pantalla completa
+  if (container.requestFullscreen) {
+    container.requestFullscreen();
+  } else if ((container as any).webkitRequestFullscreen) { // Safari
+    (container as any).webkitRequestFullscreen();
+  } else if ((container as any).msRequestFullscreen) { // IE11
+    (container as any).msRequestFullscreen();
+  } else if ((container as any).mozRequestFullScreen) { // Firefox
+    (container as any).mozRequestFullScreen();
+  }
+
+  // Actualizar estado
+  this.isPresentacionMode = true;
+  
+  // Ajustar el stage después de entrar en fullscreen
+  setTimeout(() => {
+    this.adjustStageToFullscreen();
+  }, 100);
+
+  // Escuchar cuando se sale del fullscreen (ESC o F11)
+  document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', this.handleFullscreenChange);
+  document.addEventListener('msfullscreenchange', this.handleFullscreenChange);
+}
+
+private exitFullscreen(): void {
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if ((document as any).webkitExitFullscreen) { // Safari
+    (document as any).webkitExitFullscreen();
+  } else if ((document as any).msExitFullscreen) { // IE11
+    (document as any).msExitFullscreen();
+  } else if ((document as any).mozCancelFullScreen) { // Firefox
+    (document as any).mozCancelFullScreen();
+  }
+
+  this.isPresentacionMode = false;
+  
+  // Restaurar tamaño original
+  setTimeout(() => {
+    this.restoreOriginalSize();
+  }, 100);
+}
+
+private handleFullscreenChange = () => {
+  const isFullscreen = !!(
+    document.fullscreenElement ||
+    (document as any).webkitFullscreenElement ||
+    (document as any).mozFullScreenElement ||
+    (document as any).msFullscreenElement
+  );
+
+  if (!isFullscreen && this.isPresentacionMode) {
+    // El usuario salió con ESC
+    this.isPresentacionMode = false;
+    this.restoreOriginalSize();
+    
+    // Remover event listeners
+    document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('msfullscreenchange', this.handleFullscreenChange);
+  }
+}
+
+private adjustStageToFullscreen(): void {
+  if (!this.stage) return;
+
+  const screenWidth = window.screen.width;
+  const screenHeight = window.screen.height;
+
+  // Calcular escala para ajustar el contenido
+  const scaleX = screenWidth / this.canvasWidth;
+  const scaleY = screenHeight / this.canvasHeight;
+  const scale = Math.min(scaleX, scaleY) * 0.95; // 95% para dejar margen
+
+  // Aplicar escala y centrar
+  this.stage.scale({ x: scale, y: scale });
+  
+  const offsetX = (screenWidth - this.canvasWidth * scale) / 2;
+  const offsetY = (screenHeight - this.canvasHeight * scale) / 2;
+  
+  this.stage.position({ x: offsetX, y: offsetY });
+  
+  // Ajustar el contenedor
+  this.stage.width(screenWidth);
+  this.stage.height(screenHeight);
+  
+  this.stage.batchDraw();
+  
+  console.log('🖥️ Modo pantalla completa activado:', {
+    screenWidth,
+    screenHeight,
+    scale,
+    offsetX,
+    offsetY
+  });
+}
+
+
+private restoreOriginalSize(): void {
+  if (!this.stage) return;
+
+  // Restaurar escala y posición original
+  this.stage.scale({ x: 1, y: 1 });
+  this.stage.position({ x: 0, y: 0 });
+  this.stage.width(this.canvasWidth);
+  this.stage.height(this.canvasHeight);
+  
+  this.stage.batchDraw();
+  
+  console.log('📐 Tamaño original restaurado');
+}
 
   // Entrar en modo presentación
   private enterPresentacionMode(): void {
-    // Agregar clase al body para el modo presentación
-    document.body.classList.add('presentacion-mode');
-    
-    // Ocultar barras de desplazamiento
-    document.body.style.overflow = 'hidden';
-    
-    // Ajustar el stage al tamaño completo de la pantalla
-    setTimeout(() => {
-      if (this.stage) {
-        this.stage.width(window.innerWidth);
-        this.stage.height(window.innerHeight);
-        this.stage.batchDraw();
-        
-        // Re-renderizar eventos para ajustar a la nueva escala
-        this.renderTimelineEvents();
-      }
-    }, 100);
+  // Agregar clase al body
+  document.body.classList.add('presentacion-mode');
+  
+  // Ocultar scroll
+  document.body.style.overflow = 'hidden';
+  
+  // Ajustar el stage al tamaño completo de la pantalla
+  setTimeout(() => {
+    if (this.stage) {
+      this.stage.width(window.innerWidth);
+      this.stage.height(window.innerHeight);
+      
+      // Centrar el contenido
+      const scale = Math.min(
+        window.innerWidth / this.canvasWidth,
+        window.innerHeight / this.canvasHeight
+      );
+      
+      this.stage.scale({ x: scale, y: scale });
+      this.stage.position({
+        x: (window.innerWidth - this.canvasWidth * scale) / 2,
+        y: (window.innerHeight - this.canvasHeight * scale) / 2
+      });
+      
+      this.stage.batchDraw();
+    }
+  }, 100);
 
-    // Escuchar tecla Escape para salir
-    document.addEventListener('keydown', this.handleEscapeKey);
-  }
+  // Escuchar tecla Escape
+  document.addEventListener('keydown', this.handleEscapeKey);
+}
 
   // Salir del modo presentación
   private exitPresentacionMode(): void {
-    // Remover clase del body
-    document.body.classList.remove('presentacion-mode');
-    
-    // Restaurar scroll
-    document.body.style.overflow = '';
-    
-    // Restaurar tamaño original del stage
-    setTimeout(() => {
-      this.onResize();
-    }, 100);
+  // Remover clase del body
+  document.body.classList.remove('presentacion-mode');
+  
+  // Restaurar scroll
+  document.body.style.overflow = '';
+  
+  // Restaurar tamaño original del stage
+  setTimeout(() => {
+    if (this.stage) {
+      this.stage.width(this.canvasWidth);
+      this.stage.height(this.canvasHeight);
+      this.stage.scale({ x: 1, y: 1 });
+      this.stage.position({ x: 0, y: 0 });
+      this.stage.batchDraw();
+    }
+  }, 100);
 
-    // Remover event listener
-    document.removeEventListener('keydown', this.handleEscapeKey);
-  }
-
+  // Remover event listener
+  document.removeEventListener('keydown', this.handleEscapeKey);
+}
   // Manejar tecla Escape
   private handleEscapeKey = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && this.isPresentacionMode) {
-      this.togglePresentacion();
-    }
+  if (event.key === 'Escape' && this.isPresentacionMode) {
+    this.togglePresentacion();
   }
+}
 
 
 public eventDesigns: EventDesign[] = [];
@@ -810,11 +957,11 @@ async cargarMisProyectos(): Promise<void> {
     return;
   }
 
-  // ✅ PRIMERO: Guardar el archivo
+  // PRIMERO: Guardar el archivo
   this.portadaArchivo = file;
-  console.log('✅ portadaArchivo establecido:', this.portadaArchivo);
+  console.log(' portadaArchivo establecido:', this.portadaArchivo);
 
-  // ✅ SEGUNDO: Crear preview (asíncrono)
+  // SEGUNDO: Crear preview (asíncrono)
   const reader = new FileReader();
   reader.onload = (e: any) => {
     this.proyectoPortada = e.target.result;
@@ -2275,7 +2422,7 @@ private clearResizeHandles(): void {
         elementos: proyectoData.elementosKonva?.length || 0
       });
       
-      this.mostrarMensaje(`Proyecto "${proyecto.titulo}" cargado correctamente`);
+      //this.mostrarMensaje(`Proyecto "${proyecto.titulo}" cargado correctamente jelr`);
       
     } catch (error) {
       console.error('❌ Error cargando proyecto:', error);
@@ -2786,7 +2933,7 @@ private cargarPlantillaDesdeJSON(plantillaJSON: any): void {
       amplitude: this.currentTimelineDesign.layout.amplitude
     });
     
-    this.mostrarMensaje('✅ Plantilla cargada. Ahora puedes agregar eventos.');
+    //this.mostrarMensaje('✅ Plantilla cargada. Ahora puedes agregar eventos.');
     
   } catch (error) {
     console.error('❌ Error cargando plantilla:', error);
@@ -7676,32 +7823,6 @@ private mostrarMensaje(mensaje: string, tipo: 'success' | 'error' = 'success'): 
   alert(`${tipo === 'success' ? '✅' : '❌'} ${mensaje}`);
 }
 
-/**
- * Método para importar proyecto desde JSON
- */
-/*importarDesdeJSON(event: any): void {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e: any) => {
-    try {
-      const proyectoImport: ProyectoExport = JSON.parse(e.target.result);
-      this.cargarProyectoDesdeJSON(proyectoImport);
-    } catch (error) {
-      console.error('❌ Error importando proyecto:', error);
-      this.mostrarMensaje('Error al importar el proyecto. Formato inválido.', 'error');
-    }
-  };
-  reader.readAsText(file);
-  
-  // Limpiar el input para permitir re-seleccionar el mismo archivo
-  event.target.value = '';
-}*/
-
-/**
- * Carga un proyecto desde objeto JSON
- */
 private cargarProyectoDesdeJSON(proyecto: ProyectoExport): void {
   try {
     // 1. Limpiar el editor actual
